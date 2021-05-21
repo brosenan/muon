@@ -99,9 +99,9 @@ For `2LSB=01`, the following two bits indicate whether this is a symbol or a lit
 
 Variables have the following representation:
 ```
-    --------------------------------
-MSB|vvvvvvvvvvvvvvvvvvvvvvvvvvvvvv00|LSB
-    --------------------------------
+   +---------------------------------------+
+MSB|vvvv vvvv vvvv vvvv vvvv vvvv vvvv vv00|LSB
+   +---------------------------------------+
 ```
 The `v`s represent a 30-bit **signed offset**. Please note that the value 0 represents a variable with offset 0, that is a variable that points to itself. This is called an *unbound* variable.
 
@@ -115,9 +115,9 @@ int index = i + offset;
 
 Symbols have the following structure:
 ```
-    --------------------------------
-MSB|ssssssssssssssssssssssssssss0001|LSB
-    --------------------------------
+   +---------------------------------------+
+MSB|ssss ssss ssss ssss ssss ssss ssss 0001|LSB
+   +---------------------------------------+
 ```
 The `s`s are 28 bits specific to a symbol. For example, symbol `foo` will be represented by one string of 28 bits while symbol `bar` will be represented by another. There is no relation between the textual representation (`foo` and `bar`) and the bits representing them. However, within the scope of a single program, one (textual) symbol will always be represented by the same bit-string.
 
@@ -126,9 +126,9 @@ The `s`s are 28 bits specific to a symbol. For example, symbol `foo` will be rep
 Constants can come in three different types: `int64`, `float64` and strings. Their representation is as follows:
 
 ```
-    --------------------------------
-MSB|iiiiiiiiiiiiiiiiiiiiiiiiiiiiTT01|LSB
-    --------------------------------
+   +---------------------------------------+
+MSB|iiii iiii iiii iiii iiii iiii iiii TT01|LSB
+   +---------------------------------------+
 ```
 
 Here, `TT` determines the type of constant and the `i`s represent an _unsigned_ index in the corresponding value heap. The following C++ code example shows how the type and offset can be determined based on the value in `term_heap[i]`:
@@ -142,9 +142,9 @@ int index = (term_heap[i] >> 4) & 0x0FFFFFFF;
 
 A pair represents an ordered pair of objects in the heap. Its representation is as follows:
 ```
-    --------------------------------
-MSB|lllllllllllllllrrrrrrrrrrrrrrr10|LSB
-    --------------------------------
+   +---------------------------------------+
+MSB|llll llll llll lllr rrrr rrrr rrrr rr10|LSB
+   +---------------------------------------+
 ```
 Here, the `l`s and the `r`s represent _unsigned_ offsets to the left and right element of the pair, respectively. The offset is unsigned because the pair element is always expected to be with a higher index relative to its components. A value of 0 for either the `l` or the `r` bit-string represents the special value `nil`.
 
