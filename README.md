@@ -173,6 +173,8 @@ Here, the `g`s represent an unsigned offset to the goal that needs to be satisfi
 
 If a hook needs to reference objects (either a goal or the next hook) that are too far away to be represented with 15 bits, the offset may point to a variable which in turn will point to the desired goal/hook.
 
+The calculation of the offsets is identical to the way it is done for pairs.
+
 #### Stack
 
 The stack is represented by a variable-size _signed_ `int32` array. Pushing to the stack involves adding an element at the end of the array, while popping the stack involves removing the last element.
@@ -262,3 +264,20 @@ void restore_stack(const ChoicePoint& cp) {
   }
 }
 ```
+
+#### The Choice Point Stack
+
+The choice point stack (`cp_stack`) represents the collection of choices made through the computation process and still have viable alternatives to explore. For example, consider the following decision tree relating to a meal choice:
+
+```
+            meal
+             |
+       +--------------+
+     regular       vegetarian
+       |
+  +---------+
+beef      chicken
+````
+
+When a person is considering which meal to take they first have a choice between `regular` and `vegetarian`. Then, if they have chosen `regular`, they have a choice between `beef` and `chicken`. Given that a person considers the meals in this diagram from left to right, at the point when they are considering `beef` they have to remember that they still have more options on that level (i.e., `chicken`), and also that they still have alternatives on the previous level (i.e., `vegetarian`). However, when they move to consider `chicken` the no longer have a pending alternative on that level, so that they can _commit_ to `chicken` in the sense that if `chicken` doesn't work for them, they have to abandon `regular` all together, and move directly to `vegetarian`.
+
