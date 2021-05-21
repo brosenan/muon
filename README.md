@@ -45,7 +45,7 @@ std::vector<int64_t> int64_heap;
 
 size_t allocate_term(int64_t value) {
   int64_heap.push_back(value);
-  if (int64_heap.size() > 0x0FFFFFFF) {
+  if (int64_heap.size() > 0x10000000) {
     // Report error: maximum number of int64 values exceeded.
   }
   return int64_heap.size() - 1;
@@ -54,7 +54,9 @@ size_t allocate_term(int64_t value) {
 
 #### Term Heap
 
-The **term heap** (or just “heap” for short) consists of a variable-size array of (signed) `int32` values.
+The **term heap** (or just “heap”) consists of a variable-size array of (signed) `int32` values.
+
+The size of the term heap is limited to `2^29` elements to allow variables, using 30-bit signed offsets to address any object in the heap.
 
 Allocation of new values on the heap is done by adding a value to top of the array and returning its address. For example, the folling C++ code allocates a new value in a heap represented as `std::vector<int32_t>`:
 
@@ -63,6 +65,9 @@ std::vector<int32_t> term_heap;
 
 size_t allocate_term(int32_t value) {
   term_heap.push_back(value);
+  if (term_heap.size() > 0x40000000) {
+    // Report error: heap size exceeded.
+  }
   return term_heap.size() - 1;
 }
 ```
@@ -154,3 +159,13 @@ int right_offset = (term_heap[i] >> 2) & 0x7FFF;
 int right_index = i - right_offset;
 bool is_right_nil = (right_index == i);
 ```
+
+#### Stack
+
+The stack is represented by a variable-size _signed_ `int32` array. Pushing to the stack involves adding an element at the end of the array, while popping the stack involves removing the last element.
+
+Non-negative values represent indexes on the heap. Negative values are treated as special values, according to the following table:
+| Numeric value | Meaning        |
+|---------------|----------------|
+| -1            | `nil`          |
+
