@@ -169,3 +169,83 @@ Non-negative values represent indexes on the heap. Negative values are treated a
 |---------------|----------------|
 | -1            | `nil`          |
 
+### Rollback Data Structures
+
+To support non-determinism / backtracking, μVM requires the ability to move back in time and restore past states of the computational data structures. To this end, a few additional data structures are defined.
+
+Driving the rollback process are **choice points**, objects that represent the state of the VM at a certain point in time using O(1) values. Other data structures are used in conjunction with choice points to restore the VM state to the point described by the choice point.
+
+#### Trail
+
+The trail is responsible for restoring the term heap. It is variable-size array of pairs of `int32`, representing an address in the heap and its previous value. It can be thought of as an undo-stack for the heap.
+
+At a first approximation, every change made to the heap requires adding a pair consisting of the index of the cell being updated and the value of that cell _before_ the update to the trail. This way, by playing the trail in reverse order we can undo all these changes until we reach the state described by the choice point.
+
+However, this can be optimized by storing the size of the heap in the choice point, and only storing updates to cells below that index in the trail. The rationale is that reverting to the choice point will include shrinking of the heap to its size at the choice point, thus all cells beyond that point would be discarded anyways.
+
+The following C++ code example depicts a function for updating the heap while updating the trail if needed, and then for restoring the heap to a given choice point.
+
+```c++
+std::vector<std::pair<int, int32_t>> trail;
+
+void update_term_heap(int index, int32_t value, const ChoicePoint& cp) {
+  if (index < cp.term_heap_size) {
+    trail.push_back(std::make_pair(index, term_heap[index]));
+  }
+  term_heap[index] = value;
+}
+
+void restore_heap(const ChoicePoint& cp) {
+  term_heap.resize(cp.term_heap_size);
+  while (trail.size() > cp.trail_size) {
+    auto [index, value] = trail.back();
+    term_heap[index] = value;
+    trail.pop_back();
+  }
+}
+```
+
+#### Stack Restoration Stack (SRS)
+
+The SRS is a stack intended to restore elements that have been popped from the stack after the choice point and need to be pushed back to it, to restore its state. It is represented as a variable-size array of `int32` (`srs`) and an `int32` value, indicating its lowest size the stack has reached since the last choice point (`srs_index`).
+
+When a choice point is set, the `srs_index` is set to the stack size at that point, and the previous `srs_index` value is stored in the choice point data structure.
+
+When popping a value from the stack, if the size of the stack equals `srs_index`, the value at the top of the stack (the one returned by the pop operation) is pushed to the `srs` and `srs_index` is decremented.
+
+To restore the stack, the stack is first trimmed to `srs_index`. Then values are popped from the `srs` until the stack reaches its original size at the choice point.
+
+The following C++ code example demonstrates the lifecycle of the SRS:
+
+```c++
+std::vector<int32_t> stack;
+std::vector<int32_t> srs;
+int32_t srs_index;
+
+void set_choice_point() {
+  ChoicePoint new_cp;
+  // ...
+  new_cp.last_srs_index = srs_index;
+  new_cp.stack_size = stack.size();
+  srs_index = stack.size();
+  // ...
+}
+
+int32_t stack_pop() {
+  if (stack.size() == srs_index) {
+    srs_index--;
+    srs.push_back(stack.back());
+  }
+  int32_t value = stack.back();
+  stack.pop_back();
+  return value;
+}
+
+void restore_stack(const ChoicePoint& cp) {
+  stack.resize(srs_index);
+  while (stack.size() < cp.stack_size) {
+    stack.push_back(srs.back());
+    srs.pop_back();
+  }
+}
+```
