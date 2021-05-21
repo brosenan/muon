@@ -160,6 +160,19 @@ int right_index = i - right_offset;
 bool is_right_nil = (right_index == i);
 ```
 
+##### Hooks
+
+Hooks associate (unbound) variable with goals that need to be satisfied once they are bound to values. Hooks are represented as follows:
+```
+   +---------------------------------------+
+MSB|gggg gggg gggg gggn nnnn nnnn nnnn nn11|LSB
+   +---------------------------------------+
+```
+
+Here, the `g`s represent an unsigned offset to the goal that needs to be satisfied and the `n`s represent an unsigned offset to the next hook in the chain, or 0 to indicate that this is the last one. Like pairs, these offsets are subtracted from the address of the hook.
+
+If a hook needs to reference objects (either a goal or the next hook) that are too far away to be represented with 15 bits, the offset may point to a variable which in turn will point to the desired goal/hook.
+
 #### Stack
 
 The stack is represented by a variable-size _signed_ `int32` array. Pushing to the stack involves adding an element at the end of the array, while popping the stack involves removing the last element.
