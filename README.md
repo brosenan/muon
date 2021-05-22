@@ -154,16 +154,45 @@ MSB|llll llll llll lllr rrrr rrrr rrrr rr10|LSB
 ```
 Here, the `l`s and the `r`s represent _unsigned_ offsets to the left and right element of the pair, respectively. The offset is unsigned because the pair element is always expected to be with a higher index relative to its components. A value of 0 for either the `l` or the `r` bit-string represents the special value `nil`.
 
-The following C++ code example shows how the left and right indexes are calculated for a pair at index `i`, and how we determine whether either is `nil`:
+A pair is constructed by calculating the distances to the left and right targets from the top of the heap. If this distance exceeds the addressable range for either the left or right element, a variable is added with the complete offset to the target and the offset from the pair is addressed to that variable.
+
+The following C++ code example defines the `cons` function, which constructs a pair given `left` and `right` addresses on the heap.
 
 ```c++
-int left_offset = (term_heap[i] >> 17) & 0x7FFF;
-int left_index = i - left_offset;
-bool is_left_nil = (left_index == i);
+int new_variable_to(int target) {
+  int offset = target - term_heap.size();
+  int value = target << 2;  // Adds 00 at the end.
+  return allocate_term(value);
+}
 
-int right_offset = (term_heap[i] >> 2) & 0x7FFF;
-int right_index = i - right_offset;
-bool is_right_nil = (right_index == i);
+int const(int left, int right, int32_t suffix = 0x2) {
+  if (term_heap.size() - left > 0x7FFE) {
+    left = new_variable_to(left);
+  }
+  if (term_heap.size() - right > 0x7FFF) {
+    right = new_variable_to(right);
+  }
+  int32_t value = (term_heap.size() - left) & 0x7FFF;
+  value = (value << 15) | ((term_heap.size() - right) & 0x7FFF);
+  value = (value << 15) | suffix;
+  return allocate_term(value);
+}
+```
+
+The following C++ code example shows how a pair is interpreted by implementing `car` and `cdr` to extract the left and right indexes, respectively. Both functions return -1 to indicate `nil`.
+
+```c++
+// Returns the left component.
+int car(int pair) {
+  int offset = (term_heap[pair] >> 17) & 0x7FFF;
+  return offset == 0 ? -1 : pair - offset;
+}
+
+// Returns the right component.
+int cdr(int pair) {
+  int offset = (term_heap[pair] >> 2) & 0x7FFF;
+  return offset == 0 ? -1 : pair - offset;
+}
 ```
 
 ##### Hooks
@@ -179,7 +208,21 @@ Here, the `g`s represent an unsigned offset to the goal that needs to be satisfi
 
 If a hook needs to reference objects (either a goal or the next hook) that are too far away to be represented with 15 bits, the offset may point to a variable which in turn will point to the desired goal/hook.
 
-The calculation of the offsets is identical to the way it is done for pairs.
+Since structurally, hooks are identical to pairs, they can use the same `cons`, `car` and `cdr` operations described above, with the only difference being the suffix provided to the `cons` function:
+
+```c++
+int cons_hook(int goal, int next) {
+  return cons(goal, next, 0x3);
+}
+
+int hook_goal(int hook) {
+  return car(hook);
+}
+
+int hook_next(int hook) {
+  return cdr(hook);
+}
+```
 
 #### Stack
 
