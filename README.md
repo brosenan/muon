@@ -268,12 +268,13 @@ void restore_stack(const ChoicePoint& cp) {
     stack.push_back(srs.back());
     srs.pop_back();
   }
+  srs_index = cp.srs_index;
 }
 ```
 
 #### The Choice Point Stack
 
-The choice point stack (`cp_stack`) represents the collection of choices made through the computation process and still have viable alternatives to explore. For example, consider the following decision tree relating to a meal choice:
+The choice point stack (CPS) represents the collection of choices made through the computation process and still have viable alternatives to explore. For example, consider the following decision tree relating to a meal choice:
 
 ```
             meal
@@ -287,3 +288,72 @@ beef      chicken
 
 When a person is considering which meal to take they first have a choice between `regular` and `vegetarian`. Then, if they have chosen `regular`, they have a choice between `beef` and `chicken`. Given that a person considers the meals in this diagram from left to right, at the point when they are considering `beef` they have to remember that they still have more options on that level (i.e., `chicken`), and also that they still have alternatives on the previous level (i.e., `vegetarian`). However, when they move to consider `chicken` the no longer have a pending alternative on that level, so that they can _commit_ to `chicken` in the sense that if `chicken` doesn't work for them, they have to abandon `regular` all together, and move directly to `vegetarian`.
 
+
+##### CPS Structure
+
+The CPS consists of a variable-size array of `ChoicePoint` records, each containing the following fields:
+| Name                | Type    | Description                                                          |
+|---------------------|---------|----------------------------------------------------------------------|
+| `term_heap_size`    | `int32` | The heap size at the time of the choice point.                       |
+| `int64_heap_size`   | `int32` | The `int64` heap size at the time of the choice point.               |
+| `float64_heap_size` | `int32` | The `float64` heap size at the time of the choice point.             |
+| `string_heap_size`  | `int32` | The string heap size at the time of the choice point.                |
+| `trail_size`        | `int32` | The size of the trail at the time of the choice point.               |
+| `stack_size`        | `int32` | The size of the stack at the time of the choice point.               |
+| `srs_index`         | `int32` | The `srs_index` value at the time of the choice point.               |
+| `next_option`       | `int32` | The index of the next μCode instruction to be executed upon failure. |
+
+The following C++ code example shows a possible definition of the CPS:
+
+```c++
+struct ChoicePoint {
+  int32_t term_heap_size;
+  int32_t int64_heap_size;
+  int32_t float64_heap_size;
+  int32_t string_heap_size;
+  int32_t trail_size;
+  int32_t stack_size;
+  int32_t srs_index;
+  int32_t next_option;
+};
+
+std::vector<ChoicePoint> cp_stack;
+```
+
+##### CPS Operations
+
+The CPS supports two basic operations: `cp_set` and `cp_restore`.
+
+`cp_set` pushes a new choice point to the CPS, based on the current state of the VM. The following C++ code example shows how this can be done:
+
+```c++
+void cp_set(int32 next_option) {
+  cp_stack.emplace_back();  // This adds a new record at the top of the stack without initializing it.
+
+  cp_stack.back().term_heap_size = term_heap.size();
+  cp_stack.back().int64_heap_size = int64_heap.size();
+  cp_stack.back().float64_heap_size = float64_heap.size();
+  cp_stack.back().string_heap_size = string_heap.size();
+  cp_stack.back().trail_size = trail.size();
+  cp_stack.back().stack_size = stack.size();
+  cp_stack.back().srs_index = srs_index;
+  cp_stack.back().next_option = next_option;
+}
+```
+
+`cp_restore` restores the VM state into its state at the choice point (i.e., when `cp_set` was performed). It does not pop the current choice point from the CPS as we may still have options to explore under this choice point.
+
+The following C++ code example shows a possible implementation of `cp_restore`, based on restoration functions defined in previous examples:
+```c++
+void cp_restore() {
+  if (cp_stack.empty()) {
+    // Report error: attempting to restore to an non-existing choice point.
+  }
+  restore_heap(cp_stack.back());
+  restore_stack(cp_stack.back());
+
+  int64_heap.resize(cp_stack.back().int64_heap_size);
+  float64_heap.resize(cp_stack.back().float64_heap_size);
+  string_heap.resize(cp_stack.back().string_heap_size);
+}
+```
