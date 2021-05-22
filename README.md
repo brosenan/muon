@@ -233,6 +233,47 @@ Non-negative values represent indexes on the heap. Negative values are treated a
 |---------------|----------------|
 | -1            | `nil`          |
 
+#### Queue
+
+The queue is a data structure intended to support dynamic scheduling. It is represented as a variable-size array of `int32` each representing an address of a `hook` chain in the heap.
+
+Unlike the stack and the heap, which grow and shrink throughout the lifespan of a Muon computation, the queue is extremely short-lived. Its contents is reset after the completion of every unification operation, where its contents is flushed into the stack.
+
+The `queue_flush` operation walks through every hook chain rooted in the queue and flushes all the goals listed there to the stack. Once this is complete, the queue is reset.
+
+The following C++ code example shows how the `queue_flush` operation may be implemented.
+
+```c++
+std::vector<int> queue;
+
+// Pushes a single hook-chain to the stack.
+void push_hook_chain(int chain) {
+  while (chain != -1) {
+    switch (term_heap[chain] & 0x3) {
+      case 0x3:  // a hook
+        // Push the goal to the stack.
+        stack.push(car(chain));
+        chain = cdr(chain);
+        break;
+      case 0x2:  // a pair
+        // Continue with the left chain. Push the right chain to the end of the queue.
+        queue.push_back(cdr(chain));
+        chain = car(chain);
+        break;
+      default:
+        // Report error: a hook chain can only contain hooks and pairs.
+    }
+  }
+}
+
+void queue_flush() {
+  for (int i = 0; i < queue.size(); i++) {  // Note that queue may grow during this process.
+    push_hook_chain(queue[i]);
+  }
+  queue.resize(0);
+}
+```
+
 ### Rollback Data Structures
 
 To support non-determinism / backtracking, μVM requires the ability to move back in time and restore past states of the computational data structures. To this end, a few additional data structures are defined.
@@ -371,6 +412,10 @@ The CPS supports two basic operations: `cp_set` and `cp_restore`.
 
 ```c++
 void cp_set(int32 next_option) {
+  if (queue.size() > 0) {
+    // Report error: the queue size must be zero when arriving at a choice point.
+  }
+
   cp_stack.emplace_back();  // This adds a new record at the top of the stack without initializing it.
 
   cp_stack.back().term_heap_size = term_heap.size();
@@ -398,6 +443,8 @@ void cp_restore() {
   int64_heap.resize(cp_stack.back().int64_heap_size);
   float64_heap.resize(cp_stack.back().float64_heap_size);
   string_heap.resize(cp_stack.back().string_heap_size);
+  
+  queue.resize(0);
 }
 ```
 
@@ -440,3 +487,44 @@ int find(int addr) {
 ```
 
 As can be seen in the example above, the path to the root variable can (and should) be collapsed by updating every variable in the path to point to the root directly. This optimization is at the core of the efficiency of the union-find data structure.
+
+### Binding and Hooks
+
+Binding is a directional operation which binds one variable to a value, which may or may not be an unbound variable. The `bind` operation is defined on a pair of addresses, `var` and `value`, which are both expected to be results of calls to `find` (i.e., roots). `var` is further required to be a variable (which is required to be unbound because of the requirement that it is a root).
+
+After the `bind` operation, `var` is bound to `value`. If `value` is a value (symbol, constant or pair) then `var` will be bound to that value. If `value` is an unbound variable, `var` will be bound to it such that `find(var) == value`.
+
+What makes binding a bit more challenging is the need to handle hooks correctly. Hooks are the μVM's way of delaying the evaluation of a logic goal until a certain variable is bound. Therefore, it is the responsibility of the `bind` operation to apply said hooks when binding a variable that contains hooks to a value. This is done by adding the hook-chain to the queue.
+
+Similarly, when binding a variable that contains hook to another unbound variable with hooks, their hook chains need to be merged. This is done by creating a pair containing both chains.
+
+The following C++ code example demonstrates how `bind` can be implemented.
+
+```c++
+void bind(int var, int value) {
+  if (var == value) {
+    // var and value are already bound. We're done.
+    return;
+  }
+  if (term_heap[var] != 0) {
+    // var has a hook-chain.
+    int hook_chain = variable_deref(var);
+  
+    if (is_variable(value)) {
+      // value is also an unbound variable.
+      if (term_heap[value] != 0) {
+        // value does have a hook-chain of its own. We need to merge the two.
+        int value_hook_chain = variable_deref(value);
+        hook_chain = cons(value_hook_chain, hook_chain);
+      }
+      // We can now update value to hold the hook-chain
+      update_term_heap(value, (hook_chain - value) << 2, cp_stack.back());
+    } else {
+      value is, well, a value. We need to schedule var's hook-chain.
+      queue.push_back(hook_chain);
+    }
+  }
+  // Finally, with the hook-chain taken care of, we can update var to point to value.
+  update_term_heap(var, (value - var) << 2, cp_stack.back());
+}
+```
