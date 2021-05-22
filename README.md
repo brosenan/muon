@@ -105,10 +105,16 @@ MSB|vvvv vvvv vvvv vvvv vvvv vvvv vvvv vv00|LSB
 ```
 The `v`s represent a 30-bit **signed offset**. Please note that the value 0 represents a variable with offset 0, that is a variable that points to itself. This is called an *unbound* variable.
 
-The following C++ code example shows how the index a variable at address `i` on the heap can be extracted:
+The following C++ code example provides functions that determine whether a heap cell contains a variable and that calculates the index a variable references:
 ```c++
-int offset = term_heap[i] >> 2; // assuming arithmetic shift
-int index = i + offset;
+bool is_variable(int addr) {
+  return term_heap[addr] & 0x3 == 0;
+}
+
+int variable_deref(int var_addr) {
+  int offset = term_heap[var_addr] >> 2; // assuming arithmetic shift
+  return var_addr + offset;
+}
 ```
 
 ##### Symbols
