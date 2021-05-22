@@ -405,25 +405,33 @@ void cp_restore() {
 
 As in many logic programming languages, logic variables in Muon form a [union-find data structure](https://en.wikipedia.org/wiki/Disjoint-set_data_structure) where each variable starts as a set which can then be unified with other sets (variables), with a _find_ operation that returns a consistent root for each merged set. The root can either be _unbound_ (i.e., point to itself or a hook-chain) or be _bound_ (i.e., point to a concrete value).
 
+### Find
+
+The `find` operation takes an address of an object on the heap. If it is a bound varaible, the address of the object it is bound to is returned. If it is unbound, a consistent root is returned.
+
 The following C++ code example shows how the `find` operation can be implemented:
 
 ```c++
-int find(int var) {
-  if (!is_variable(var)) {
-    // Report error: only variables are allowed as arguments to find().
+int find(int addr) {
+  if (!is_variable(addr)) {
+    return addr;
   }
   
-  int parent = variable_deref(var);
-  if (parent == var) {
+  int var = addr;  // addr is the address of a variable...
+  int next = variable_deref(var);  // ...which points to next.
+  if (next == var) {
     // var is a self-referencing variable, which is the root.
     return var;
-  } else if (!is_variable(parent)) {
-    // var points to a value (symbol, constant or pair) or a hook, making it the root.
+  } else if (is_hook(next)) {  // next & 0x3 == 0x3
+    // var points to a hook, making it a root.
     return var;
+  } else if (!is_variable(parent)) {
+    // var points to a value (symbol, constant or pair). We return the value.
+    return next;
   } else {
-    // parent is a variable that is different from var.
+    // next is a variable that is different from var.
     // We will call find() recursively on it and update var to point to the root we find.
-    int root = find(parent);
+    int root = find(next);
     int new_value = (root - var) << 2;
     update_term_heap(var, new_value, cp_stack.back());
     return root;
@@ -432,24 +440,3 @@ int find(int var) {
 ```
 
 As can be seen in the example above, the path to the root variable can (and should) be collapsed by updating every variable in the path to point to the root directly. This optimization is at the core of the efficiency of the union-find data structure.
-
-To read the value associated with a variable, the `get` operation uses `find` to find the root variable and dereferences it. A value is returned if the address points to a value. For non-variables, `get` is an identity function.
-
-```c++
-std::optional<int32_t> get(int addr) {
-  if (is_variable(addr)) {
-    int result_addr = variable_deref(find(addr));
-    int32_t value = term_heap[result_addr];
-    if (value & 0x3 == 0x1 || value & 0x3 == 0x2) {
-      // For symbols, constants and pairs, return their address.
-      return result_addr;
-    } else {
-      // For variables (self referencing) or hooks, return nothing.
-      return std::nullopt;
-    }
-  } else {
-    return addr;
-  }
-}
-```
-
