@@ -43,7 +43,7 @@ Allocation of a new value on one of these heaps is done by appending an element 
 ```c++
 std::vector<int64_t> int64_heap;
 
-size_t allocate_term(int64_t value) {
+size_t allocate_int64(int64_t value) {
   int64_heap.push_back(value);
   if (int64_heap.size() > 0x10000000) {
     // Report error: maximum number of int64 values exceeded.
@@ -403,4 +403,53 @@ void cp_restore() {
 
 ## Variable Operations
 
-One of the main differences between logic programming languages and most other kinds of languages is the semantics of variables. In its purest form, logic programming variables represent _unknowns_. The purpose of the computation is to find out the possible values for these unknowns.
+As in many logic programming languages, logic variables in Muon form a [union-find data structure](https://en.wikipedia.org/wiki/Disjoint-set_data_structure) where each variable starts as a set which can then be unified with other sets (variables), with a _find_ operation that returns a consistent root for each merged set. The root can either be _unbound_ (i.e., point to itself or a hook-chain) or be _bound_ (i.e., point to a concrete value).
+
+The following C++ code example shows how the `find` operation can be implemented:
+
+```c++
+int find(int var) {
+  if (!is_variable(var)) {
+    // Report error: only variables are allowed as arguments to find().
+  }
+  
+  int parent = variable_deref(var);
+  if (parent == var) {
+    // var is a self-referencing variable, which is the root.
+    return var;
+  } else if (!is_variable(parent)) {
+    // var points to a value (symbol, constant or pair) or a hook, making it the root.
+    return var;
+  } else {
+    // parent is a variable that is different from var.
+    // We will call find() recursively on it and update var to point to the root we find.
+    int root = find(parent);
+    int new_value = (root - var) << 2;
+    update_term_heap(var, new_value, cp_stack.back());
+    return root;
+  }
+}
+```
+
+As can be seen in the example above, the path to the root variable can (and should) be collapsed by updating every variable in the path to point to the root directly. This optimization is at the core of the efficiency of the union-find data structure.
+
+To read the value associated with a variable, the `get` operation uses `find` to find the root variable and dereferences it. A value is returned if the address points to a value. For non-variables, `get` is an identity function.
+
+```c++
+std::optional<int32_t> get(int addr) {
+  if (is_variable(addr)) {
+    int result_addr = variable_deref(find(addr));
+    int32_t value = term_heap[result_addr];
+    if (value & 0x3 == 0x1 || value & 0x3 == 0x2) {
+      // For symbols, constants and pairs, return their address.
+      return result_addr;
+    } else {
+      // For variables (self referencing) or hooks, return nothing.
+      return std::nullopt;
+    }
+  } else {
+    return addr;
+  }
+}
+```
+
