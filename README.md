@@ -357,3 +357,7 @@ void cp_restore() {
   string_heap.resize(cp_stack.back().string_heap_size);
 }
 ```
+
+## Variable Operations
+
+One of the main differences between logic programming languages and most other kinds of languages is the semantics of variables. In its purest form, logic programming variables represent _unknowns_. The purpose of the computation is to find out the possible values for these unknowns.
