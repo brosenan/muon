@@ -528,3 +528,81 @@ void bind(int var, int value) {
   update_term_heap(var, (value - var) << 2, cp_stack.back());
 }
 ```
+
+### Unification
+
+Term unification is at the heart of any logic programming language. It is a symmetric operation by which two terms are compared to one another, and if they are equal up to variable assignments, the variable assignment that satisfies their equality is generated.
+
+In μVM, the `unify` operation operates on two addresses in the heap. It returns a Boolean return value (`true` for success, `false` for failure) and as a side-effect, it binds variables to make the terms equal.
+
+**Note:** On failure `unify` _does not_ roll-back bindings it has already performed. This is the responsibility of the caller.
+
+The `unify` operation over addresses `a` and `b` works as follows:
+* It replaces `a` and `b` with the result of applying `find` to each of them.
+* If `a` is a variable, `a` is bound to `b` and return `true`.
+* If `b` is a variable, `b` is bound to `a` and return `true`.
+* If `a` is a symbol:
+  * If `b` is a symbol with the same value as `a` we return `true`.
+  * Otherwise, we return `false`.
+* If `a` is a constant:
+  * If `b` is a constant of the same type and `a` and `b` have the same value, we return `true`. Please note that `a` and `b` may point to different locations in the respective value heap, but still have the same value.
+  * Otherwise, we return `false`.
+* If `a` is a pair:
+  * If `b` is a pair, call `unify` recursively on both `car(a)` and `car(b)` and on `cdr(a)` and `cdr(b)`. Return the conjunction (AND) of both results.
+
+
+The following C++ code example shows how `unify` can be implemented:
+
+```c++
+bool unify(int a, int b) {
+  a = find(a);
+  b = find(b);
+  if (is_variable(a)) {
+    bind(a, b);
+    return true;
+  }
+  if (is_variable(b)) {
+    bind(b, a);
+    return true;
+  }
+  if (term_heap[a] & 0xF == 0x1) {
+    // a is a symbol.
+    return term_heap[a] == term_heap[b];
+  }
+  if (term_heap[a] & 0xF == 0x5) {
+    // a is an int64 constant.
+    if (term_heap[b] & 0xF != 0x5) {
+      return false;
+    }
+
+    return int64_heap[(term_heap[a] >> 4) & 0x0FFFFFFF] ==
+           int64_heap[(term_heap[b] >> 4) & 0x0FFFFFFF];
+  }
+  if (term_heap[a] & 0xF == 0x9) {
+    // a is a float64 constant.
+    if (term_heap[b] & 0xF != 0x9) {
+      return false;
+    }
+
+    return float64_heap[(term_heap[a] >> 4) & 0x0FFFFFFF] ==
+           float64_heap[(term_heap[b] >> 4) & 0x0FFFFFFF];
+  }
+  if (term_heap[a] & 0xF == 0xd) {
+    // a is a string constant.
+    if (term_heap[b] & 0xF != 0xd) {
+      return false;
+    }
+
+    return string_heap[(term_heap[a] >> 4) & 0x0FFFFFFF] ==
+           string_heap[(term_heap[b] >> 4) & 0x0FFFFFFF];
+  }
+  if (is_pair(a)) {
+    if (!is_pair(b)) {
+      return false;
+    }
+    return unify(car(a), car(b)) && unify(cdr(a), cdr(b));
+  }
+  // This should not happen.
+  return false;
+}
+```
