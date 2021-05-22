@@ -520,7 +520,7 @@ void bind(int var, int value) {
       // We can now update value to hold the hook-chain
       update_term_heap(value, (hook_chain - value) << 2, cp_stack.back());
     } else {
-      value is, well, a value. We need to schedule var's hook-chain.
+      // value is, well, a value. We need to schedule var's hook-chain.
       queue.push_back(hook_chain);
     }
   }
