@@ -538,6 +538,7 @@ In μVM, the `unify` operation operates on two addresses in the heap. It returns
 **Note:** On failure `unify` _does not_ roll-back bindings it has already performed. This is the responsibility of the caller.
 
 The `unify` operation over addresses `a` and `b` works as follows:
+* It checks that either `a` and `b` are `nil` (in which case it returns `true`), or none of them (in which case it continues). If only one of them is `nil` it returns `false`.
 * It replaces `a` and `b` with the result of applying `find` to each of them.
 * If `a` is a variable, `a` is bound to `b` and return `true`.
 * If `b` is a variable, `b` is bound to `a` and return `true`.
@@ -555,8 +556,17 @@ The following C++ code example shows how `unify` can be implemented:
 
 ```c++
 bool unify(int a, int b) {
+  // Make sure either a and b are both nil, or none of them are.
+  if (a == -1) {
+    return b == -1;
+  }
+  if (b == -1) {
+    return false;
+  }
+  // Find the roots of both a and b.
   a = find(a);
   b = find(b);
+  // If either a or b are variables, use binding.
   if (is_variable(a)) {
     bind(a, b);
     return true;
