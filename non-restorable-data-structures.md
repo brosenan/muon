@@ -43,3 +43,25 @@ void queue_flush() {
 }
 ```
 
+## Locals
+
+Locals are a set of variables allocated on the heap, representing the variables in a single Horn clause. A single index, `locals_base` points to the region on the heap where they are allocated.
+
+The following C++ code example shows how locals can be allocated and referenced.
+
+```c++
+int locals_base;
+
+// Allocates n locals.
+void allocate_locals(int n) {
+    locals_base = term_heap.size();
+    for (int i = 0; i < n; i++) {
+        allocate_term(0);
+    }
+}
+
+// Returns the address of local number n.
+int get_local(int n) {
+    return locals_base + n;
+}
+```

@@ -141,7 +141,7 @@ int new_variable_to(int target) {
   return allocate_term(value);
 }
 
-int const(int left, int right, int32_t suffix = 0x2) {
+int cons(int left, int right, int32_t suffix = 0x2) {
   if (term_heap.size() - left > 0x7FFE) {
     left = new_variable_to(left);
   }
