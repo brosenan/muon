@@ -19,3 +19,18 @@
                    (empty? expr) [:empty-list]
                    :else [:pair (-> expr first parse) (-> expr rest parse)])
     :else (throw (Exception. (str "Invalid Muon expression " expr)))))
+
+(defn format-muon [ast]
+  (cond
+    (-> ast first (= :symbol)) (symbol (second ast))
+    (-> ast first (= :var)) (keyword (second ast))
+    (-> ast first (= :empty-list)) '()
+    (-> ast first (= :empty-vec)) []
+    (-> ast first (= :pair)) (let [[a b] (rest ast)
+                                   head (format-muon a)
+                                   tail (format-muon b)]
+                               (cond
+                                 (vector? tail) (vec (concat [head] tail))
+                                 (list? tail) (conj tail head)
+                                 :else (list head tail '...)))
+    :else (second ast)))
