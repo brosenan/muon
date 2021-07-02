@@ -63,6 +63,16 @@
  (unify [:pair [:int 2] [:int 3]] [:pair [:int 1] [:var "x"]] {}) => nil
  (unify [:pair [:var "x"] [:int 2]] [:not-a-pair [:int 1] [:var "y"]] {}) => nil)
 
+;; Given a term (as AST) and a bindings map, `subs-vars` returns the given term after substituting all bound variables with their assigned values.
+(fact
+ (subs-vars [:var "x"] {}) => [:var "x"]
+ (subs-vars [:var "x"] {"x" [:int 42]}) => [:int 42]
+ (subs-vars [:pair [:var "x"] [:pair [:string "foo"] [:var "y"]]] {"x" [:int 42]
+                                                                   "y" [:empty-list]}) =>
+ [:pair [:int 42] [:pair [:string "foo"] [:empty-list]]]
+ (subs-vars [:var "x"] {"x" [:var "y"]
+                        "y" [:int 42]}) => [:int 42])
+
 ;; ## Program Handling
 
 ;; A Muon program consists of _statements_, which are individual expressions. Each statement can either be a _fact_ or a _rule_.
@@ -150,7 +160,56 @@
      {1 [:var "x"]}]
     [[[:pair [:symbol "baz"] [:pair [:string "42"] [:empty-list]]]] {}]]))
 
+;; `eval-states` takes an evaluation state, a database and an allocator and returns a lazy sequence of all (`goal-list`, `bindings`)
+;; pairs that are encountered during the evaluation.
+(fact
+ (let [db (load-program '[(nat z)
+                          (<- (nat (s :n))
+                              (nat :n))])]
+   (eval-states [[[[:pair [:symbol "nat"] [:pair [:pair [:symbol "s"]
+                                                  [:pair [:pair [:symbol "s"]
+                                                          [:pair [:symbol "z"] [:empty-list]]]
+                                                   [:empty-list]]]
+                                           [:empty-list]]]] {}]] db (atom 0)) =>
+   [[[[:pair
+       [:symbol "nat"]
+       [:pair
+        [:pair
+         [:symbol "s"]
+         [:pair
+          [:pair [:symbol "s"] [:pair [:symbol "z"] [:empty-list]]]
+          [:empty-list]]]
+        [:empty-list]]]]
+     {}]
+    [[[:pair [:symbol "nat"] [:pair [:var 1] [:empty-list]]]]
+     {1 [:pair [:symbol "s"] [:pair [:symbol "z"] [:empty-list]]]}]
+    [[[:pair [:symbol "nat"] [:pair [:var 2] [:empty-list]]]]
+     {1 [:pair [:symbol "s"] [:pair [:symbol "z"] [:empty-list]]]
+      2 [:symbol "z"]}]
+    [[]
+     {1 [:pair [:symbol "s"] [:pair [:symbol "z"] [:empty-list]]]
+      2 [:symbol "z"]}]
+    [[[:pair [:symbol "nat"] [:pair [:var 4] [:empty-list]]]]
+     {4 [:pair [:symbol "s"] [:pair [:symbol "z"] [:empty-list]]]}]
+    [[[:pair [:symbol "nat"] [:pair [:var 5] [:empty-list]]]]
+     {4 [:pair [:symbol "s"] [:pair [:symbol "z"] [:empty-list]]]
+      5 [:symbol "z"]}]
+    [[]
+     {4 [:pair [:symbol "s"] [:pair [:symbol "z"] [:empty-list]]]
+      5 [:symbol "z"]}]]))
+
+;; Finally, `eval-goals` takes a goal list, a database and an allocator and returns a lazy sequence of bindings that satisfy all goals.
+(fact
+ (let [db (load-program '[(concat () :b :b)
+                          (<- (concat (:x :a ...) :b (:x :ab ...))
+                              (concat :a :b :ab))])
+       goal (parse '(concat (1 2) (3) :x))]
+   (subs-vars [:var "x"] (first (eval-goals [goal] db (atom 0)))) =>
+   [:pair [:int 1] [:pair [:int 2] [:pair [:int 3] [:empty-list]]]]))
+
 ;; ## Implementation Details
 (fact
  (all-prefixes [1 2 3 4]) => [[1] [1 2] [1 2 3] [1 2 3 4]]
  (ast-list-to-seq [:pair [:int 1] [:pair [:int 2] [:empty-list]]]) => [[:int 1] [:int 2]])
+
+

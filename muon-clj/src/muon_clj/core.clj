@@ -70,6 +70,14 @@
                              nil)
     (= a b) bindings))
 
+(defn subs-vars [term bindings]
+  (cond
+    (and (-> term first (= :var))
+         (bindings (second term))) (subs-vars (bindings (second term)) bindings)
+    (-> term first (= :pair)) (let [[a b] (rest term)]
+                                [:pair (subs-vars a bindings) (subs-vars b bindings)])
+    :else term))
+
 (defn normalize-statement [statement]
   (if-let [bindings (unify statement [:pair [:symbol "<-"] [:pair [:var "head"] [:var "body"]]] {})]
     [(bindings "head") (bindings "body")]
@@ -123,3 +131,13 @@
     (concat (->> (match-rules goal bindings db alloc)
                  (map (fn [[goal-list1 bindings]] [(concat goal-list1 (rest goal-list)) bindings])))
             (rest options))))
+
+(defn eval-states [options db alloc]
+  (if (empty? options) nil
+      (lazy-seq (cons (first options)
+                      (eval-states (eval-step options db alloc) db alloc)))))
+
+(defn eval-goals [goals db alloc]
+  (->> (eval-states [[goals {}]] db alloc)
+       (filter (fn [[goals _bindings]] (empty? goals)))
+       (map second)))
