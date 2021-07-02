@@ -94,12 +94,38 @@
                  (<- (nat (s :n))
                      (nat :n))]
        db (load-program program)]
-   (println db)
    (-> ["nat" "z"] db count) => 1
    (-> ["nat" "z"] db first (->> (map format-muon))) => '[(nat z) ()]
    (-> ["nat" "s"] db count) => 1
    (-> ["nat"] db count) => 2))
 
+;; ## Evaluation
+
+;; The state of the evaluation consists of a sequence of (`goal-list`, `bindings`) pairs,
+;; where the `goal-list` consists of the logic goals to be satisfied and `bindings` is a map from variable names to their assigned values.
+;; Each element in the sequence represents an alternative that needs to be explored.
+;; An empty `goal-list` indicates a result, and an empty sequence indicates the end of the evaluation, with no more options to explore.
+;;
+;; The evaluation process is done in steps. In each step, the first (`goal-list`, `bindings`) pair is taken out of the sequence and
+;; the first goal in the `goal-list` is matched against the database.
+;; Every match results in an option to explore.
+;; The body of each matching rule is prepended to the `goal-list` and the `bindings` are updated with the result of the unification of the head.
+;;
+;; We begin describing this process bottom-up.
+;; As a first step, `match-rules` takes a goal (term AST), a bindings map, a database map and an integer `atom` for allocating fresh variables.
+;; It returns a sequence (`goal-list`, `bindings`) pairs, one for each successful match.
+(fact
+ (let [db (load-program '[(foo 1)
+                          (<- (foo :x)
+                              (bar :x :y)
+                              (foo :y))])]
+   (match-rules (parse `(bar 1 2)) {}, db, (atom 0)) => []
+   (match-rules (parse `(foo :x)) {}, db, (atom 0)) => [[[] {"x" [:int 1]}]
+                                                        [[[:pair [:symbol "bar"] [:pair [:var 1] [:pair [:var 2] [:empty-list]]]]
+                                                          [:pair [:symbol "foo"] [:pair [:var 2] [:empty-list]]]]
+                                                         {1[:var "x"]}]]))
+
 ;; ## Implementation Details
 (fact
-  (all-prefixes [1 2 3 4]) => [[1] [1 2] [1 2 3] [1 2 3 4]])
+ (all-prefixes [1 2 3 4]) => [[1] [1 2] [1 2 3] [1 2 3 4]]
+ (ast-list-to-seq [:pair [:int 1] [:pair [:int 2] [:empty-list]]]) => [[:int 1] [:int 2]])

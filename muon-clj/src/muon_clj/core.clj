@@ -99,3 +99,16 @@
        (group-by first)
        (map (fn [[key value]] [key (->> value (map second))]))
        (into {})))
+
+(defn ast-list-to-seq [ast-list]
+  (cond
+    (-> ast-list first (= :empty-list)) []
+    (-> ast-list first (= :pair)) (concat [(-> ast-list (nth 1))] (-> ast-list (nth 2) ast-list-to-seq))))
+
+(defn match-rules [goal bindings db alloc]
+  (let [key (term-key goal)
+        options (db key)]
+    (->> options
+         (map (fn [[head body]] (alloc-vars [:pair head body] alloc)))
+         (map (fn [[_pair head body]] [body (unify head goal bindings)]))
+         (map (fn [[goals bindings]] [(ast-list-to-seq goals) bindings])))))
