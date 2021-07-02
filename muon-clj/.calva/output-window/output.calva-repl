@@ -30,3 +30,7 @@ clj꞉muon-clj.core-test꞉> 
 (foo :c)
 nil
 clj꞉muon-clj.core-test꞉> 
+(unify [:pair [:var "a"] [:var "b"]] [:pair [:var "b"] [:int 1]] {})
+; Syntax error compiling at (.calva/output-window/output.calva-repl:33:1).
+; Unable to resolve symbol: unify in this context
+clj꞉muon-clj.core-test꞉> 

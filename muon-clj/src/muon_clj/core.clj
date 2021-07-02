@@ -6,18 +6,18 @@
     (int? expr) [:int expr]
     (float? expr) [:float expr]
     (string? expr) [:string expr]
-    (symbol? expr) [:symbol (str expr)]
+    (symbol? expr) [:symbol (name expr)]
     (keyword? expr) [:var (-> expr str (subs 1))]
     (vector? expr) (cond
                      (and (= (count expr) 3)
                           (= (nth expr 2) '...)) [:pair (-> expr first parse) (-> expr second parse)]
                      (empty? expr) [:empty-vec]
                      :else [:pair (-> expr first parse) (-> expr rest vec parse)])
-    (list? expr) (cond
-                   (and (= (count expr) 3)
-                        (= (nth expr 2) '...)) [:pair (-> expr first parse) (-> expr second parse)]
-                   (empty? expr) [:empty-list]
-                   :else [:pair (-> expr first parse) (-> expr rest parse)])
+    (seq? expr) (cond
+                  (and (= (count expr) 3)
+                       (= (nth expr 2) '...)) [:pair (-> expr first parse) (-> expr second parse)]
+                  (empty? expr) [:empty-list]
+                  :else [:pair (-> expr first parse) (-> expr rest parse)])
     :else (throw (Exception. (str "Invalid Muon expression " expr)))))
 
 (defn format-muon [ast]
@@ -69,3 +69,33 @@
                                (->> bindings (unify a1 b1) (recur a2 b2)))
                              nil)
     (= a b) bindings))
+
+(defn normalize-statement [statement]
+  (if-let [bindings (unify statement [:pair [:symbol "<-"] [:pair [:var "head"] [:var "body"]]] {})]
+    [(bindings "head") (bindings "body")]
+    [statement [:empty-list]]))
+
+(defn term-key [term]
+  (cond
+    (-> term first (= :symbol)) [(second term)]
+    (-> term first (= :pair)) (let [key-pref (term-key (second term))]
+                                (if (empty? key-pref)
+                                  []
+                                  (concat key-pref (-> term (nth 2) term-key))))
+    :else []))
+
+(defn all-prefixes [list]
+  (if (empty? list)
+    []
+    (concat (-> list count dec (take list) all-prefixes) [list])))
+
+(defn load-program [program]
+  (->> program
+       (map parse)
+       (map normalize-statement)
+       (map (fn [[head body]] [(term-key head) [head body]]))
+       (mapcat (fn [[key statement]] (for [subkey (all-prefixes key)]
+                                       [subkey statement])))
+       (group-by first)
+       (map (fn [[key value]] [key (->> value (map second))]))
+       (into {})))
