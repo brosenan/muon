@@ -116,3 +116,10 @@
          (map (fn [[_pair head body]] [body (unify head goal bindings)]))
          (filter (fn [[_body bindings]] (not (nil? bindings))))
          (map (fn [[goals bindings]] [(ast-list-to-seq goals) bindings])))))
+
+(defn eval-step [options db alloc]
+  (let [[goal-list bindings] (first options)
+        goal (first goal-list)]
+    (concat (->> (match-rules goal bindings db alloc)
+                 (map (fn [[goal-list1 bindings]] [(concat goal-list1 (rest goal-list)) bindings])))
+            (rest options))))

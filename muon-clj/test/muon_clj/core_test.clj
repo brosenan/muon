@@ -131,6 +131,25 @@
                                                            [:pair [:symbol "foo"] [:pair [:var 2] [:empty-list]]]]
                                                           {1 [:symbol "baz"]}]]))
 
+;; `eval-step` takes an evaluation state (a non-empty sequence of (`goal-list`, `bindings`) pairs), a database and an allocator and
+;; evolves the state by one step.
+;; It uses `match-rules` on the first goal in the first element in the sequence, then prepends the resulting goals of each option to the
+;; remaining goals in the `goal-list` and prepends these results to the rest of the sequence.
+(fact
+ (let [db (load-program '[(foo 1)
+                          (<- (foo :x)
+                              (bar :x :y)
+                              (foo :y))])]
+   (eval-step [[[[:pair [:symbol "foo"] [:pair [:var "x"] [:empty-list]]]
+                 [:pair [:symbol "bar"] [:pair [:int 42] [:empty-list]]]] {}]
+               [[[:pair [:symbol "baz"] [:pair [:string "42"] [:empty-list]]]] {}]] db (atom 0)) =>
+   [[[[:pair [:symbol "bar"] [:pair [:int 42] [:empty-list]]]] {"x" [:int 1]}]
+    [[[:pair [:symbol "bar"] [:pair [:var 1] [:pair [:var 2] [:empty-list]]]]
+      [:pair [:symbol "foo"] [:pair [:var 2] [:empty-list]]]
+      [:pair [:symbol "bar"] [:pair [:int 42] [:empty-list]]]]
+     {1 [:var "x"]}]
+    [[[:pair [:symbol "baz"] [:pair [:string "42"] [:empty-list]]]] {}]]))
+
 ;; ## Implementation Details
 (fact
  (all-prefixes [1 2 3 4]) => [[1] [1 2] [1 2 3] [1 2 3 4]]
