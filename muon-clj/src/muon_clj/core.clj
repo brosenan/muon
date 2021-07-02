@@ -53,3 +53,19 @@
                                     [b varmap] (alloc-vars b alloc varmap)]
                                 [[:pair a b] varmap])
      :else [ast varmap])))
+
+(defn unify [a b bindings]
+  (cond
+    (nil? bindings) nil
+    (-> a first (= :var)) (if-let [a-val (bindings (second a))]
+                            (recur a-val b bindings)
+                            (assoc bindings (second a) b))
+    (-> b first (= :var)) (if-let [b-val (bindings (second b))]
+                            (recur a b-val bindings)
+                            (assoc bindings (second b) a))
+    (-> a first (= :pair)) (if (-> b first (= :pair))
+                             (let [[a1 a2] (rest a)
+                                   [b1 b2] (rest b)]
+                               (->> bindings (unify a1 b1) (recur a2 b2)))
+                             nil)
+    (= a b) bindings))

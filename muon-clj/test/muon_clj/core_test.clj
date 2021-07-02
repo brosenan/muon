@@ -2,7 +2,7 @@
   (:require [midje.sweet :refer :all]
             [muon-clj.core :refer :all]))
 
-;; parse translates a Muon s-expression into an AST.
+;; `parse` translates a Muon s-expression into an AST.
 (fact
  (parse 1) => [:int 1]
  (parse 3.14) => [:float 3.14]
@@ -17,7 +17,7 @@
  (parse '[:x :xs ...]) => [:pair [:var "x"] [:var "xs"]]
  (parse {}) => (throws Exception "Invalid Muon expression {}"))
 
-;; format-muon formats an AST into a Muon s-expression.
+;; `format-muon` formats an AST into a Muon s-expression.
 (fact
  (format-muon [:int 1]) => 1
  (format-muon [:float 3.14]) => 3.14
@@ -31,9 +31,9 @@
  (format-muon [:empty-vec]) => []
  (format-muon [:pair [:symbol "a"] [:pair [:symbol "b"] [:empty-vec]]]) => ['a 'b])
 
-;; alloc-vars takes a Muon AST and an integer atom, and allocates integers in place of the string :var nodes.
+;; `alloc-vars` takes a Muon AST and an integer `atom`, and allocates integers in place of the string `:var` nodes.
 ;; It does so consistently, such that the same string will be mapped to the same number.
-;; The returned AST has numeric :vars but is otherwise identical to the original AST.
+;; The returned AST has numeric `:vars` but is otherwise identical to the original AST.
 (fact
  (alloc-vars [:empty-list] (atom 0)) => [:empty-list]
  (alloc-vars [:var "a"] (atom 0)) => [:var 1]
@@ -41,3 +41,22 @@
  (alloc-vars [:pair [:var "a"] [:var "a"]] (atom 0)) => [:pair [:var 1] [:var 1]]
  (alloc-vars [:pair [:var "a"] [:pair [:int 42] [:pair [:var "a"] [:empty-list]]]] (atom 0)) =>
  [:pair [:var 1] [:pair [:int 42] [:pair [:var 1] [:empty-list]]]])
+
+;; [Term unification](https://en.wikipedia.org/wiki/Unification_(computer_science)) is an operation that looks for a set of variable bindings that,
+;; if assigned, make two logic terms that contain these variables identical.
+;;
+;; `unify` takes a pair of terms and a (possibly empty) map of variable bindings and returns either `nil`,
+;; if the terms cannot be unified, or, if they can be unified, it returns the map of variable assignments that satisfies the unification.
+(fact
+ (unify [:int 1] [:int 2] {}) => nil
+ (unify [:int 1] [:int 1] {"a" [:int 3]}) => {"a" [:int 3]}
+ (unify [:var "foo"] [:int 1] {}) => {"foo" [:int 1]}
+ (unify [:var "foo"] [:int 1] {"foo" [:int 2]}) => nil
+ (unify [:var "foo"] [:int 1] {"foo" [:int 1]}) => {"foo" [:int 1]}
+ (unify [:int 1] [:var "foo"] {}) => {"foo" [:int 1]}
+ (unify [:int 1] [:var "foo"] {"foo" [:int 2]}) => nil
+ (unify [:int 1] [:var "foo"] {"foo" [:int 1]}) => {"foo" [:int 1]}
+ (unify [:pair [:var "x"] [:int 2]] [:pair [:int 1] [:var "y"]] {}) => {"x" [:int 1] "y" [:int 2]}
+ (unify [:pair [:var "x"] [:int 2]] [:pair [:int 1] [:var "x"]] {}) => nil
+ (unify [:pair [:int 2] [:int 3]] [:pair [:int 1] [:var "x"]] {}) => nil
+ (unify [:pair [:var "x"] [:int 2]] [:not-a-pair [:int 1] [:var "y"]] {}) => nil)
