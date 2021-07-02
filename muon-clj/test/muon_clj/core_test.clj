@@ -189,6 +189,7 @@
     [[]
      {1 [:pair [:symbol "s"] [:pair [:symbol "z"] [:empty-list]]]
       2 [:symbol "z"]}]
+    ;; We have two results because we (currently) look at all prefixes of the key. (see TODO on match-rules).
     [[[:pair [:symbol "nat"] [:pair [:var 4] [:empty-list]]]]
      {4 [:pair [:symbol "s"] [:pair [:symbol "z"] [:empty-list]]]}]
     [[[:pair [:symbol "nat"] [:pair [:var 5] [:empty-list]]]]
@@ -204,7 +205,9 @@
                           (<- (concat (:x :a ...) :b (:x :ab ...))
                               (concat :a :b :ab))])
        goal (parse '(concat (1 2) (3) :x))]
-   (subs-vars [:var "x"] (first (eval-goals [goal] db (atom 0)))) =>
+   (->> (eval-goals [goal] db (atom 0))
+        first
+        (subs-vars [:var "x"])) =>
    [:pair [:int 1] [:pair [:int 2] [:pair [:int 3] [:empty-list]]]]))
 
 ;; ## Implementation Details
