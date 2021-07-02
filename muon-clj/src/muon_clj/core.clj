@@ -23,7 +23,9 @@
 (defn format-muon [ast]
   (cond
     (-> ast first (= :symbol)) (symbol (second ast))
-    (-> ast first (= :var)) (keyword (second ast))
+    (-> ast first (= :var)) (let [var (second ast)
+                                  var (if (int? var) (str "#" var) var)]
+                              (keyword var))
     (-> ast first (= :empty-list)) '()
     (-> ast first (= :empty-vec)) []
     (-> ast first (= :pair)) (let [[a b] (rest ast)
@@ -34,3 +36,20 @@
                                  (list? tail) (conj tail head)
                                  :else (list head tail '...)))
     :else (second ast)))
+
+(defn alloc-vars
+  ([ast alloc]
+   (-> (alloc-vars ast alloc {}) first))
+  ([ast alloc varmap]
+   (cond
+     (-> ast first (= :var)) (let [var-str (second ast)
+                                   var-int (varmap var-str)]
+                               (if (nil? var-int)
+                                 (let [var-int (swap! alloc inc)]
+                                   [[:var var-int] (assoc varmap var-str var-int)])
+                                 [[:var var-int] varmap]))
+     (-> ast first (= :pair)) (let [[a b] (rest ast)
+                                    [a varmap] (alloc-vars a alloc varmap)
+                                    [b varmap] (alloc-vars b alloc varmap)]
+                                [[:pair a b] varmap])
+     :else [ast varmap])))

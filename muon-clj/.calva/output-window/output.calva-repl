@@ -20,3 +20,13 @@ clj꞉muon-clj.core꞉>  ; Use `alt+enter` to evaluate
 clj꞉muon-clj.core꞉> (rest [1])
 ()
 clj꞉muon-clj.core-test꞉> 
+(def foo {:a 1 :b 2
+          })
+#'muon-clj.core-test/foo
+clj꞉muon-clj.core-test꞉> 
+(foo :a)
+1
+clj꞉muon-clj.core-test꞉> 
+(foo :c)
+nil
+clj꞉muon-clj.core-test꞉> 
