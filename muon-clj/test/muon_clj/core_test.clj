@@ -90,7 +90,7 @@
 
 ;; `load-program` takes a collection of Muon statements, parses them, normalizes them and builds a database: a map from keys to lists of normalized pairs.
 (fact
- (let [program `[(nat z)
+ (let [program '[(nat z)
                  (<- (nat (s :n))
                      (nat :n))]
        db (load-program program)]
@@ -119,11 +119,17 @@
                           (<- (foo :x)
                               (bar :x :y)
                               (foo :y))])]
-   (match-rules (parse `(bar 1 2)) {}, db, (atom 0)) => []
-   (match-rules (parse `(foo :x)) {}, db, (atom 0)) => [[[] {"x" [:int 1]}]
+   (match-rules (parse '(bar 1 2)) {}, db, (atom 0)) => []
+   (match-rules (parse '(foo :x)) {}, db, (atom 0)) => [[[] {"x" [:int 1]}]
                                                         [[[:pair [:symbol "bar"] [:pair [:var 1] [:pair [:var 2] [:empty-list]]]]
                                                           [:pair [:symbol "foo"] [:pair [:var 2] [:empty-list]]]]
-                                                         {1[:var "x"]}]]))
+                                                         {1 [:var "x"]}]]
+   (match-rules (parse '(foo 2)) {}, db, (atom 0)) => [[[[:pair [:symbol "bar"] [:pair [:var 1] [:pair [:var 2] [:empty-list]]]]
+                                                         [:pair [:symbol "foo"] [:pair [:var 2] [:empty-list]]]]
+                                                        {1 [:int 2]}]]
+   (match-rules (parse '(foo baz)) {}, db, (atom 0)) => [[[[:pair [:symbol "bar"] [:pair [:var 1] [:pair [:var 2] [:empty-list]]]]
+                                                           [:pair [:symbol "foo"] [:pair [:var 2] [:empty-list]]]]
+                                                          {1 [:symbol "baz"]}]]))
 
 ;; ## Implementation Details
 (fact

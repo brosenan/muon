@@ -6,7 +6,7 @@
     (int? expr) [:int expr]
     (float? expr) [:float expr]
     (string? expr) [:string expr]
-    (symbol? expr) [:symbol (name expr)]
+    (symbol? expr) [:symbol (str expr)]
     (keyword? expr) [:var (-> expr str (subs 1))]
     (vector? expr) (cond
                      (and (= (count expr) 3)
@@ -106,9 +106,13 @@
     (-> ast-list first (= :pair)) (concat [(-> ast-list (nth 1))] (-> ast-list (nth 2) ast-list-to-seq))))
 
 (defn match-rules [goal bindings db alloc]
-  (let [key (term-key goal)
-        options (db key)]
-    (->> options
+  (let [key (term-key goal)]
+    (->> key
+         ;; TODO: This is now correct but not efficient. This has to be refined such that we only take
+         ;; into considerations the relevant prefixes.
+         all-prefixes
+         (mapcat db)
          (map (fn [[head body]] (alloc-vars [:pair head body] alloc)))
          (map (fn [[_pair head body]] [body (unify head goal bindings)]))
+         (filter (fn [[_body bindings]] (not (nil? bindings))))
          (map (fn [[goals bindings]] [(ast-list-to-seq goals) bindings])))))
