@@ -4,7 +4,7 @@
             [clojure.string :as str]
             [clojure.java.io :as io]))
 
-(def muon-symbols ["<-"])
+(def muon-symbols ["<-" "..."])
 
 (defn convert-ns [expr ns-map refer-map]
   (walk/postwalk (fn [expr] (if (symbol? expr)
@@ -29,7 +29,7 @@
   (let [paths (module-paths module-name muon-path)
         existing (->> paths (filter #(.exists %)))]
     (if (empty? existing)
-      (throw (Exception. (str "Cannot find module " module-name " in paths " muon-path)))
+      (throw (Exception. (str "Cannot find module " module-name " in paths " (list muon-path))))
       (-> existing first slurp))))
 
 (defn- handle-require [args module-name]

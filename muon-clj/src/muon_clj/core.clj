@@ -10,12 +10,12 @@
     (keyword? expr) [:var (-> expr str (subs 1))]
     (vector? expr) (cond
                      (and (= (count expr) 3)
-                          (= (nth expr 2) '...)) [:pair (-> expr first parse) (-> expr second parse)]
+                          (= (nth expr 2) 'muon/...)) [:pair (-> expr first parse) (-> expr second parse)]
                      (empty? expr) [:empty-vec]
                      :else [:pair (-> expr first parse) (-> expr rest vec parse)])
     (seq? expr) (cond
                   (and (= (count expr) 3)
-                       (= (nth expr 2) '...)) [:pair (-> expr first parse) (-> expr second parse)]
+                       (= (nth expr 2) 'muon/...)) [:pair (-> expr first parse) (-> expr second parse)]
                   (empty? expr) [:empty-list]
                   :else [:pair (-> expr first parse) (-> expr rest parse)])
     :else (throw (Exception. (str "Invalid Muon expression " expr)))))
@@ -34,7 +34,7 @@
                                (cond
                                  (vector? tail) (vec (concat [head] tail))
                                  (list? tail) (conj tail head)
-                                 :else (list head tail '...)))
+                                 :else (list head tail 'muon/...)))
     :else (second ast)))
 
 (defn alloc-vars
@@ -79,7 +79,7 @@
     :else term))
 
 (defn normalize-statement [statement]
-  (if-let [bindings (unify statement [:pair [:symbol "<-"] [:pair [:var "head"] [:var "body"]]] {})]
+  (if-let [bindings (unify statement [:pair [:symbol "muon/<-"] [:pair [:var "head"] [:var "body"]]] {})]
     [(bindings "head") (bindings "body")]
     [statement [:empty-list]]))
 

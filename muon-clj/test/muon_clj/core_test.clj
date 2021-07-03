@@ -13,10 +13,10 @@
  (parse :baz) => [:var "baz"]
  (parse '()) => [:empty-list]
  (parse '(1 2)) => [:pair [:int 1] [:pair [:int 2] [:empty-list]]]
- (parse '(:x :xs ...)) => [:pair [:var "x"] [:var "xs"]]
+ (parse '(:x :xs muon/...)) => [:pair [:var "x"] [:var "xs"]]
  (parse []) => [:empty-vec]
  (parse ['a 'b]) => [:pair [:symbol "a"] [:pair [:symbol "b"] [:empty-vec]]]
- (parse '[:x :xs ...]) => [:pair [:var "x"] [:var "xs"]]
+ (parse '[:x :xs muon/...]) => [:pair [:var "x"] [:var "xs"]]
  (parse {}) => (throws Exception "Invalid Muon expression {}"))
 
 ;; `format-muon` formats an AST into a Muon s-expression.
@@ -29,7 +29,7 @@
  (format-muon [:var 42]) => :#42  ;; Numeric vars are prefixed with a #.
  (format-muon [:empty-list]) => '()
  (format-muon [:pair [:int 1] [:pair [:int 2] [:empty-list]]]) => '(1 2)
- (format-muon [:pair [:var "x"] [:var "xs"]]) => '(:x :xs ...)
+ (format-muon [:pair [:var "x"] [:var "xs"]]) => '(:x :xs muon/...)
  (format-muon [:empty-vec]) => []
  (format-muon [:pair [:symbol "a"] [:pair [:symbol "b"] [:empty-vec]]]) => ['a 'b])
 
@@ -76,15 +76,15 @@
 ;; ## Program Handling
 
 ;; A Muon program consists of _statements_, which are individual expressions. Each statement can either be a _fact_ or a _rule_.
-;; A rule is a statement of the form `(<- :head :body ...)` where `:head` is a single term and `:body` is a list of zero or more terms.
+;; A rule is a statement of the form `(muon/<- :head :body ...)` where `:head` is a single term and `:body` is a list of zero or more terms.
 ;; A fact, in contrast is a single term.
 ;;
 ;; To simplify the handling of facts and rules, the `normalize-statement` function takes statements (facts or rules), and returns a pair
-;; `[:head :body]` such that for a rule `(<- :head :body ...)` `:head` and `:body` are taken verbatim, and for a fact `:fact`, `:head`
+;; `[:head :body]` such that for a rule `(muon/<- :head :body ...)` `:head` and `:body` are taken verbatim, and for a fact `:fact`, `:head`
 ;; is taken as `:fact` and `:body` is taken as `()`.
 (fact
  (map format-muon
-      (-> '(<- (foo :bar)
+      (-> '(muon/<- (foo :bar)
                (bar :foo)) parse normalize-statement)) => ['(foo :bar) ['(bar :foo)]]
  (map format-muon
       (-> '(foo :bar) parse normalize-statement)) => ['(foo :bar) []])
@@ -101,7 +101,7 @@
 ;; `load-program` takes a collection of Muon statements, parses them, normalizes them and builds a database: a map from keys to lists of normalized pairs.
 (fact
  (let [program '[(nat z)
-                 (<- (nat (s :n))
+                 (muon/<- (nat (s :n))
                      (nat :n))]
        db (load-program program)]
    (-> ["nat" "z"] db count) => 1
@@ -126,7 +126,7 @@
 ;; It returns a sequence (`goal-list`, `bindings`) pairs, one for each successful match.
 (fact
  (let [db (load-program '[(foo 1)
-                          (<- (foo :x)
+                          (muon/<- (foo :x)
                               (bar :x :y)
                               (foo :y))])]
    (match-rules (parse '(bar 1 2)) {}, db, (atom 0)) => []
@@ -147,7 +147,7 @@
 ;; remaining goals in the `goal-list` and prepends these results to the rest of the sequence.
 (fact
  (let [db (load-program '[(foo 1)
-                          (<- (foo :x)
+                          (muon/<- (foo :x)
                               (bar :x :y)
                               (foo :y))])]
    (eval-step [[[[:pair [:symbol "foo"] [:pair [:var "x"] [:empty-list]]]
@@ -164,7 +164,7 @@
 ;; pairs that are encountered during the evaluation.
 (fact
  (let [db (load-program '[(nat z)
-                          (<- (nat (s :n))
+                          (muon/<- (nat (s :n))
                               (nat :n))])]
    (eval-states [[[[:pair [:symbol "nat"] [:pair [:pair [:symbol "s"]
                                                   [:pair [:pair [:symbol "s"]
@@ -202,7 +202,7 @@
 ;; Finally, `eval-goals` takes a goal list, a database and an allocator and returns a lazy sequence of bindings that satisfy all goals.
 (fact
  (let [db (load-program '[(concat () :b :b)
-                          (<- (concat (:x :a ...) :b (:x :ab ...))
+                          (muon/<- (concat (:x :a muon/...) :b (:x :ab muon/...))
                               (concat :a :b :ab))])
        goal (parse '(concat (1 2) (3) :x))]
    (->> (eval-goals [goal] db (atom 0))
