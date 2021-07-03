@@ -232,8 +232,8 @@ Finally, `eval-goals` takes a goal list, a database and an allocator and returns
        goal (parse '(concat (1 2) (3) :x))]
    (->> (eval-goals [goal] db (atom 0))
         first
-        (subs-vars [:var "x"])) =>
-   [:pair [:int 1] [:pair [:int 2] [:pair [:int 3] [:empty-list]]]]))
+        (subs-vars [:var "x"])
+        format-muon) => '(1 2 3)))
 
 ```
 ## Implementation Details

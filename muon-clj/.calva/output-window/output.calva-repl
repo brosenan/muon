@@ -34,3 +34,10 @@ clj꞉muon-clj.core-test꞉> 
 ; Syntax error compiling at (.calva/output-window/output.calva-repl:33:1).
 ; Unable to resolve symbol: unify in this context
 clj꞉muon-clj.core-test꞉> 
+(read-string "[(a b c) (d e)]")
+(a b c)
+clj꞉muon-clj.core-test꞉> 
+
+(read-string "[(a b c) (d e)]")
+[(a b c) (d e)]
+clj꞉muon-clj.core-test꞉> 
