@@ -103,20 +103,6 @@
      (-> term first (= :var)) {:stop prefix}
      :else (conj prefix (second term)))))
 
-(defn term-key2 [term]
-  (cond
-    (-> term first (= :symbol)) [(second term)]
-    (-> term first (= :pair)) (let [key-pref (term-key2 (second term))]
-                                (if (empty? key-pref)
-                                  []
-                                  (concat key-pref (-> term (nth 2) term-key2))))
-    :else []))
-
-(defn all-prefixes [list]
-  (if (empty? list)
-    []
-    (concat (-> list count dec (take list) all-prefixes) [list])))
-
 (defn load-program [program]
   (loop [db nil
          program program]
@@ -127,17 +113,6 @@
             [head body] (normalize-statement statement)
             key (term-key head)]
         (recur (trie/trie-update db key [head body]) (rest program))))))
-
-(defn load-program2 [program]
-  (->> program
-       (map parse)
-       (map normalize-statement)
-       (map (fn [[head body]] [(term-key2 head) [head body]]))
-       (mapcat (fn [[key statement]] (for [subkey (all-prefixes key)]
-                                       [subkey statement])))
-       (group-by first)
-       (map (fn [[key value]] [key (->> value (map second))]))
-       (into {})))
 
 (defn ast-list-to-seq [ast-list]
   (cond

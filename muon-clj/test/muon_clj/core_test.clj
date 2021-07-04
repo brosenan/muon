@@ -207,6 +207,5 @@
 
 ;; ## Implementation Details
 (fact
- (all-prefixes [1 2 3 4]) => [[1] [1 2] [1 2 3] [1 2 3 4]]
  (ast-list-to-seq [:pair [:int 1] [:pair [:int 2] [:empty-list]]]) => [[:int 1] [:int 2]])
 

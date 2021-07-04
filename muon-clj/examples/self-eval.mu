@@ -6,4 +6,6 @@
     (s (conj :b ...)))
 (s (conj))
 (<- (s (conj :a :b ...))
+    (s :a)
     (s (conj :b ...)))
+

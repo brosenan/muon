@@ -51,19 +51,32 @@
       (when (-> options :trace (>= 1))
         (->> (core/eval-states [[[(-> options :goal core/parse)] {}]] db (atom 0))
              (map (fn [[goals bindings]]
-                    (if (empty? goals)
-                      "****"
-                      (str (->> (for [_goal goals] " ") str/join)
-                           "> "
-                           (if (-> options :trace (>= 2))
-                             (prn-str [(first goals) bindings])
-                             (-> goals
-                                 first
-                                 (core/subs-vars bindings)
-                                 core/format-muon))))))
+                    (str (if (empty? goals)
+                           "****"
+                           (if (-> options :trace (>= 3))
+                             (str "\n > "
+                                  (->> goals
+                                       (map #(core/subs-vars % bindings))
+                                       (map core/format-muon)
+                                       (str/join "\n > ")))
+                             (str (->> (for [_goal goals] " ") str/join)
+                                  "> "
+                                  (-> goals
+                                      first
+                                      (core/subs-vars bindings)
+                                      core/format-muon))))
+                         (if (-> options :trace (>= 2))
+                           (str "\n"
+                                (->> (for [[var val] bindings]
+                                       (str var " = " (-> val
+                                                          (core/subs-vars bindings)
+                                                          core/format-muon)))
+                                     (str/join "\n")))
+                           ""))))
              (str/join "\n")
              println))
       (-> [(-> options :goal core/parse)]
           (core/eval-goals db (atom 0))
           results-string
           println))))
+
