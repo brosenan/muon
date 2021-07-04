@@ -114,16 +114,16 @@
     (-> ast-list first (= :pair)) (concat [(-> ast-list (nth 1))] (-> ast-list (nth 2) ast-list-to-seq))))
 
 (defn match-rules [goal bindings db alloc]
-  (let [key (term-key goal)]
-    (->> key
-         ;; TODO: This is now correct but not efficient. This has to be refined such that we only take
-         ;; into considerations the relevant prefixes.
-         all-prefixes
-         (mapcat db)
-         (map (fn [[head body]] (alloc-vars [:pair head body] alloc)))
-         (map (fn [[_pair head body]] [body (unify head goal bindings)]))
-         (filter (fn [[_body bindings]] (not (nil? bindings))))
-         (map (fn [[goals bindings]] [(ast-list-to-seq goals) bindings])))))
+  (->> (subs-vars goal bindings)
+       term-key
+       ;; TODO: This is now correct but not efficient. This has to be refined such that we only take
+       ;; into considerations the relevant prefixes.
+       all-prefixes
+       (mapcat db)
+       (map (fn [[head body]] (alloc-vars [:pair head body] alloc)))
+       (map (fn [[_pair head body]] [body (unify head goal bindings)]))
+       (filter (fn [[_body bindings]] (not (nil? bindings))))
+       (map (fn [[goals bindings]] [(ast-list-to-seq goals) bindings]))))
 
 (defn eval-step [options db alloc]
   (let [[goal-list bindings] (first options)

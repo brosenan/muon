@@ -14,6 +14,9 @@
    :parse-fn edn/read-string]
   ["-d" "--dump-statements" "Prints the loaded statements to the console"]
   ["-D" "--dump-database" "Prints the database"]
+  ["-t" "--trace" "Prints the intermediate goals being evaluated"
+   :default 0
+   :update-fn inc]
   ["-h" "--help" "Show help"]])
 
 (defn- results-string [results]
@@ -42,9 +45,24 @@
           statements (modules/load-with-dependencies main-module muon-path)
           db (core/load-program statements)]
       (when (:dump-statements options)
-        (prn statements))
+        (->> statements (str/join "\n") println))
       (when (:dump-database options)
         (prn db))
+      (when (-> options :trace (>= 1))
+        (->> (core/eval-states [[[(-> options :goal core/parse)] {}]] db (atom 0))
+             (map (fn [[goals bindings]]
+                    (if (empty? goals)
+                      "****"
+                      (str (->> (for [_goal goals] " ") str/join)
+                           "> "
+                           (if (-> options :trace (>= 2))
+                             (prn-str [(first goals) bindings])
+                             (-> goals
+                                 first
+                                 (core/subs-vars bindings)
+                                 core/format-muon))))))
+             (str/join "\n")
+             println))
       (-> [(-> options :goal core/parse)]
           (core/eval-goals db (atom 0))
           results-string
