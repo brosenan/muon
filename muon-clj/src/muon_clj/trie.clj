@@ -1,14 +1,13 @@
 (ns muon-clj.trie
   (:require [clojure.set :as set]))
 
-(declare trie-update)
-
-(defn- trie-update* [[values next] key value]
-  (if (empty? key)
-    [(conj values value) next]
-    [values (update next (first key) #(trie-update % (rest key) value))]))
-
-(def trie-update (fnil trie-update* [#{} {}]))
+(defn trie-update [trie key value]
+  (if (nil? trie)
+    (recur [#{} {}] key value)
+    (let [[values next] trie]
+      (if (empty? key)
+        [(conj values value) next]
+        [values (update next (first key) #(trie-update % (rest key) value))]))))
 
 (defn all-values [trie]
   (if (nil? trie)

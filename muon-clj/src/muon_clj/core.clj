@@ -1,5 +1,6 @@
 (ns muon-clj.core
-  (:gen-class))
+  (:gen-class)
+  (:require [muon-clj.trie :as trie]))
 
 (defn parse [expr]
   (cond
@@ -83,13 +84,32 @@
     [(bindings "head") (bindings "body")]
     [statement [:empty-list]]))
 
-(defn term-key [term]
+(defn term-key
+  ([term]
+   (let [result (term-key [] term)]
+     (if (map? result)
+       (:stop result)
+       result)))
+  ([prefix term]
+   (cond
+     (map? prefix) prefix
+     (-> term first (= :pair)) (let [[a b] (rest term)]
+                                 (-> prefix
+                                     (conj :pair)
+                                     (term-key a)
+                                     (term-key b)))
+     (-> term first (= :empty-list)) (-> prefix
+                                         (conj :empty-list))
+     (-> term first (= :var)) {:stop prefix}
+     :else (conj prefix (second term)))))
+
+(defn term-key2 [term]
   (cond
     (-> term first (= :symbol)) [(second term)]
-    (-> term first (= :pair)) (let [key-pref (term-key (second term))]
+    (-> term first (= :pair)) (let [key-pref (term-key2 (second term))]
                                 (if (empty? key-pref)
                                   []
-                                  (concat key-pref (-> term (nth 2) term-key))))
+                                  (concat key-pref (-> term (nth 2) term-key2))))
     :else []))
 
 (defn all-prefixes [list]
@@ -98,10 +118,21 @@
     (concat (-> list count dec (take list) all-prefixes) [list])))
 
 (defn load-program [program]
+  (loop [db nil
+         program program]
+    (if (empty? program)
+      db
+      (let [statement (first program)
+            statement (parse statement)
+            [head body] (normalize-statement statement)
+            key (term-key head)]
+        (recur (trie/trie-update db key [head body]) (rest program))))))
+
+(defn load-program2 [program]
   (->> program
        (map parse)
        (map normalize-statement)
-       (map (fn [[head body]] [(term-key head) [head body]]))
+       (map (fn [[head body]] [(term-key2 head) [head body]]))
        (mapcat (fn [[key statement]] (for [subkey (all-prefixes key)]
                                        [subkey statement])))
        (group-by first)
@@ -116,10 +147,7 @@
 (defn match-rules [goal bindings db alloc]
   (->> (subs-vars goal bindings)
        term-key
-       ;; TODO: This is now correct but not efficient. This has to be refined such that we only take
-       ;; into considerations the relevant prefixes.
-       all-prefixes
-       (mapcat db)
+       (trie/trie-get db)
        (map (fn [[head body]] (alloc-vars [:pair head body] alloc)))
        (map (fn [[_pair head body]] [body (unify head goal bindings)]))
        (filter (fn [[_body bindings]] (not (nil? bindings))))

@@ -1,6 +1,7 @@
 (ns muon-clj.core-test
   (:require [midje.sweet :refer :all]
-            [muon-clj.core :refer :all]))
+            [muon-clj.core :refer :all]
+            [muon-clj.trie :as trie]))
 
 ;; ## Term Handling
 
@@ -89,25 +90,26 @@
  (map format-muon
       (-> '(foo :bar) parse normalize-statement)) => ['(foo :bar) []])
 
-;; Normalized rules are stored in a database keyed by all their symbol prefixes.
+;; Normalized rules are stored in a database formed as a [trie](trie.md).
+;; The keys in this trie are serializations of ASTs, which are trimmed at the first variable.
+;; The function `term-key` takes an AST of a term and returns a sequence of tokens acting as its database key:
 (fact
- (-> 2 parse term-key) => []
- (-> 'foo parse term-key) => ["foo"]
- (-> '(foo) parse term-key) => ["foo"]
- (-> '(foo bar) parse term-key) => ["foo" "bar"]
- (-> '(foo (bar (baz))) parse term-key) => ["foo" "bar" "baz"]
- (-> '(foo (:bar (baz))) parse term-key) => ["foo"])
+ (term-key [:symbol "foo"]) => ["foo"]
+ (term-key [:pair [:symbol "foo"] [:int 42]]) => [:pair "foo" 42]
+ (term-key [:pair [:symbol "foo"] [:empty-list]]) => [:pair "foo" :empty-list]
+ (term-key [:pair [:symbol "foo"] [:pair [:var "x"] [:empty-list]]]) => [:pair "foo" :pair])
 
-;; `load-program` takes a collection of Muon statements, parses them, normalizes them and builds a database: a map from keys to lists of normalized pairs.
+;; `load-program` takes a collection of Muon statements, parses them, normalizes them and builds a database:
+;; a [trie](trie.md) mapping `term-key`s to them.
 (fact
  (let [program '[(nat z)
                  (muon/<- (nat (s :n))
                           (nat :n))]
        db (load-program program)]
-   (-> ["nat" "z"] db count) => 1
-   (-> ["nat" "z"] db first (->> (map format-muon))) => '[(nat z) ()]
-   (-> ["nat" "s"] db count) => 1
-   (-> ["nat"] db count) => 2))
+   (-> db (trie/trie-get [:pair "nat" :pair "z" :empty-list]) count) => 1
+   (-> db (trie/trie-get [:pair "nat" :pair "z" :empty-list]) first (->> (map format-muon))) => '[(nat z) ()]
+   (-> db (trie/trie-get [:pair "nat" :pair :pair "s"]) count) => 1
+   (-> db (trie/trie-get [:pair "nat"]) count) => 2))
 
 ;; ## Evaluation
 
@@ -141,6 +143,8 @@
                                                            [:pair [:symbol "foo"] [:pair [:var 2] [:empty-list]]]]
                                                           {1 [:symbol "baz"]}]]))
 
+
+
 ;; `eval-step` takes an evaluation state (a non-empty sequence of (`goal-list`, `bindings`) pairs), a database and an allocator and
 ;; evolves the state by one step.
 ;; It uses `match-rules` on the first goal in the first element in the sequence, then prepends the resulting goals of each option to the
@@ -160,45 +164,35 @@
      {1 [:var "x"]}]
     [[[:pair [:symbol "baz"] [:pair [:string "42"] [:empty-list]]]] {}]]))
 
+
+
 ;; `eval-states` takes an evaluation state, a database and an allocator and returns a lazy sequence of all (`goal-list`, `bindings`)
 ;; pairs that are encountered during the evaluation.
-(comment (fact
-          (let [db (load-program '[(nat z)
-                                   (muon/<- (nat (s :n))
-                                            (nat :n))])]
-            (eval-states [[[[:pair [:symbol "nat"] [:pair [:pair [:symbol "s"]
-                                                           [:pair [:pair [:symbol "s"]
-                                                                   [:pair [:symbol "z"] [:empty-list]]]
-                                                            [:empty-list]]]
-                                                    [:empty-list]]]] {}]] db (atom 0)) =>
-            [[[[:pair
-                [:symbol "nat"]
-                [:pair
-                 [:pair
-                  [:symbol "s"]
-                  [:pair
-                   [:pair [:symbol "s"] [:pair [:symbol "z"] [:empty-list]]]
-                   [:empty-list]]]
-                 [:empty-list]]]]
-              {}]
-             [[[:pair [:symbol "nat"] [:pair [:var 1] [:empty-list]]]]
-              {1 [:pair [:symbol "s"] [:pair [:symbol "z"] [:empty-list]]]}]
-             [[[:pair [:symbol "nat"] [:pair [:var 2] [:empty-list]]]]
-              {1 [:pair [:symbol "s"] [:pair [:symbol "z"] [:empty-list]]] 2 [:symbol "z"]}]
-             [()
-              {1 [:pair [:symbol "s"] [:pair [:symbol "z"] [:empty-list]]] 2 [:symbol "z"]}]
-             [()
-              {1 [:pair [:symbol "s"] [:pair [:symbol "z"] [:empty-list]]] 2 [:symbol "z"]}]
-             [[[:pair [:symbol "nat"] [:pair [:var 4] [:empty-list]]]]
-              {1 [:pair [:symbol "s"] [:pair [:symbol "z"] [:empty-list]]] 4 [:symbol "z"]}]
-             [()
-              {1 [:pair [:symbol "s"] [:pair [:symbol "z"] [:empty-list]]] 4 [:symbol "z"]}]
-             [()
-              {1 [:pair [:symbol "s"] [:pair [:symbol "z"] [:empty-list]]] 4 [:symbol "z"]}]
-             [[:pair [:symbol "nat"] [:pair [:var 6] [:empty-list]]]
-              {6 [:pair [:symbol "s"] [:pair [:symbol "z"] [:empty-list]]]}]
-             [[[:pair [:symbol "nat"] [:pair [:var 7] [:empty-list]]]]
-              {6 [:pair [:symbol "s"] [:pair [:symbol "z"] [:empty-list]]] 7 [:symbol "z"]}]])))
+(fact
+ (let [db (load-program '[(nat z)
+                          (muon/<- (nat (s :n))
+                                   (nat :n))])]
+   (eval-states [[[[:pair [:symbol "nat"] [:pair [:pair [:symbol "s"]
+                                                  [:pair [:pair [:symbol "s"]
+                                                          [:pair [:symbol "z"] [:empty-list]]]
+                                                   [:empty-list]]]
+                                           [:empty-list]]]] {}]] db (atom 0)) =>
+   [[[[:pair
+       [:symbol "nat"]
+       [:pair
+        [:pair
+         [:symbol "s"]
+         [:pair
+          [:pair [:symbol "s"] [:pair [:symbol "z"] [:empty-list]]]
+          [:empty-list]]]
+        [:empty-list]]]]
+     {}]
+    [[[:pair [:symbol "nat"] [:pair [:var 1] [:empty-list]]]]
+     {1 [:pair [:symbol "s"] [:pair [:symbol "z"] [:empty-list]]]}]
+    [[[:pair [:symbol "nat"] [:pair [:var 2] [:empty-list]]]]
+     {1 [:pair [:symbol "s"] [:pair [:symbol "z"] [:empty-list]]] 2 [:symbol "z"]}]
+    [[]
+     {1 [:pair [:symbol "s"] [:pair [:symbol "z"] [:empty-list]]] 2 [:symbol "z"]}]]))
 
 ;; Finally, `eval-goals` takes a goal list, a database and an allocator and returns a lazy sequence of bindings that satisfy all goals.
 (fact
@@ -215,5 +209,4 @@
 (fact
  (all-prefixes [1 2 3 4]) => [[1] [1 2] [1 2 3] [1 2 3 4]]
  (ast-list-to-seq [:pair [:int 1] [:pair [:int 2] [:empty-list]]]) => [[:int 1] [:int 2]])
-
 
