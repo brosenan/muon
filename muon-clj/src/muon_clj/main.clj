@@ -1,4 +1,5 @@
 (ns muon-clj.main
+  (:gen-class)
   (:require [clojure.tools.cli :refer [parse-opts]]
             [clojure.edn :as edn]
             [clojure.string :as str]

@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+muon_dir=$(dirname $BASH_SOURCE)
+muon_clj_dir=$muon_dir/muon-clj
+jar_file=$(ls -1 $muon_clj_dir/target/uberjar/muon-clj-*-standalone.jar | tail -1)
+lib_dir=$muon_dir/lib
+path_flags=$(echo "$MUON_PATH" | sed "s/\([^:][^:]*\)/-p \1 /g" | sed "s/://g")
+
+java -jar $jar_file -p $lib_dir $path_flags "$@"

@@ -6,7 +6,7 @@
   :dependencies [[org.clojure/clojure "1.10.1"]
                  [midje "1.10.3"]
                  [org.clojure/tools.cli "1.0.206"]]
-  :main ^:skip-aot muon-clj.main
+  :main muon-clj.main
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all
                        :jvm-opts ["-Dclojure.compiler.direct-linking=true"]}
