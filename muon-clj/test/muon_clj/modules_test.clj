@@ -84,12 +84,15 @@
 
 ;; The `muon` module is a special one in that it does not contain a set of statements but rather the semantics of the language itself.
 ;; As such, it defines the `<-` symbol, which is implicitly associated with the `muon` namespace in the `refer-map`.
+;; Additional symbols in the `muon` namespace: `...` and `test`.
 (fact
  (load-single-module "foo.bar" ["/some/path"]) => ['[(muon/<- (foo.bar/a :x)
-                                                              (foo.bar/b :x))] []]
+                                                              (foo.bar/b :x))
+                                                     (muon/test muon/...)] []]
  (provided
   (read-module "foo.bar" ["/some/path"]) => "(ns foo.bar)
-                                              (<- (a :x) (b :x))"))
+                                              (<- (a :x) (b :x))
+                                             (test ...)"))
 
 ;; ## Loading a Complete Program
 

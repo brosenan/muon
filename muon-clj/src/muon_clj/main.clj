@@ -4,7 +4,8 @@
             [clojure.edn :as edn]
             [clojure.string :as str]
             [muon-clj.core :as core]
-            [muon-clj.modules :as modules]))
+            [muon-clj.modules :as modules]
+            [muon-clj.testing :as testing]))
 
 (def cli-options
  [["-p" "--muon-path PATH" "Muon Path"
@@ -18,6 +19,7 @@
   ["-t" "--trace" "Prints the intermediate goals being evaluated"
    :default 0
    :update-fn inc]
+  ["-T" "--test" "Runs unit tests defined in the selected module and all its dependencies"]
   ["-h" "--help" "Show help"]])
 
 (defn- results-string [results]
@@ -30,6 +32,34 @@
                                               (core/subs-vars bindings)
                                               core/format-muon)))))
          (str/join "\n----\n"))))
+
+(defn- trace [options db]
+  (->> (core/eval-states [[[(-> options :goal core/parse)] {}]] db (atom 0))
+       (map (fn [[goals bindings]]
+              (str (if (empty? goals)
+                     "****"
+                     (if (-> options :trace (>= 3))
+                       (str "\n > "
+                            (->> goals
+                                 (map #(core/subs-vars % bindings))
+                                 (map core/format-muon)
+                                 (str/join "\n > ")))
+                       (str (->> (for [_goal goals] " ") str/join)
+                            "> "
+                            (-> goals
+                                first
+                                (core/subs-vars bindings)
+                                core/format-muon))))
+                   (if (-> options :trace (>= 2))
+                     (str "\n"
+                          (->> (for [[var val] bindings]
+                                 (str var " = " (-> val
+                                                    (core/subs-vars bindings)
+                                                    core/format-muon)))
+                               (str/join "\n")))
+                     ""))))
+       (str/join "\n")
+       println))
 
 (defn -main [& args]
   (let [{options :options
@@ -49,35 +79,16 @@
         (->> statements (str/join "\n") println))
       (when (:dump-database options)
         (prn db))
-      (when (-> options :trace (>= 1))
-        (->> (core/eval-states [[[(-> options :goal core/parse)] {}]] db (atom 0))
-             (map (fn [[goals bindings]]
-                    (str (if (empty? goals)
-                           "****"
-                           (if (-> options :trace (>= 3))
-                             (str "\n > "
-                                  (->> goals
-                                       (map #(core/subs-vars % bindings))
-                                       (map core/format-muon)
-                                       (str/join "\n > ")))
-                             (str (->> (for [_goal goals] " ") str/join)
-                                  "> "
-                                  (-> goals
-                                      first
-                                      (core/subs-vars bindings)
-                                      core/format-muon))))
-                         (if (-> options :trace (>= 2))
-                           (str "\n"
-                                (->> (for [[var val] bindings]
-                                       (str var " = " (-> val
-                                                          (core/subs-vars bindings)
-                                                          core/format-muon)))
-                                     (str/join "\n")))
-                           ""))))
-             (str/join "\n")
-             println))
-      (-> [(-> options :goal core/parse)]
-          (core/eval-goals db (atom 0))
-          results-string
-          println))))
+      (when (:test options)
+        (let [[success output] (testing/run-tests db)]
+          (println output)
+          (when (not success)
+            (System/exit 1))))
+      (when (:goal options)
+        (when (-> options :trace (>= 1))
+          (trace options db))
+        (-> [(-> options :goal core/parse)]
+            (core/eval-goals db (atom 0))
+            results-string
+            println)))))
 
