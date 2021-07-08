@@ -5,7 +5,9 @@
             [clojure.string :as str]
             [muon-clj.core :as core]
             [muon-clj.modules :as modules]
-            [muon-clj.testing :as testing]))
+            [muon-clj.testing :as testing]
+            [clojure.core.async :as async]
+            [hawk.core :as hawk]))
 
 (def cli-options
  [["-p" "--muon-path PATH" "Muon Path"
@@ -20,6 +22,7 @@
    :default 0
    :update-fn inc]
   ["-T" "--test" "Runs unit tests defined in the selected module and all its dependencies"]
+  ["-a" "--autotest" "Execute iteratively every time one of the dependent modules change"]
   ["-h" "--help" "Show help"]])
 
 (defn- results-string [results]
@@ -61,34 +64,49 @@
        (str/join "\n")
        println))
 
+(defn- wait-for-change [modules muon-path]
+  (let [files-to-watch (for [module modules
+                             file (modules/module-paths module muon-path)]
+                         (.toString file))
+        chan (async/chan)]
+    (hawk/watch! [{:paths files-to-watch
+                   :handler (fn [_ e] (async/>!! chan e))}])
+    (async/<!! chan)))
+
 (defn -main [& args]
-  (let [{options :options
+  (let [status (atom 0)
+        {options :options
          arguments :arguments
          summary :summary} (parse-opts args cli-options)]
     (when (:help options)
       (println summary)
       (System/exit 0))
-    (let [muon-path (concat ["."] (:muon-path options))
-          main-module (if (= (count arguments) 1)
-                        (first arguments)
-                        (throw (Exception. (str "Exactly one positional argument is required (the main module name). "
-                                                (count (:arguments options)) " are given."))))
-          statements (modules/load-with-dependencies main-module muon-path)
-          db (core/load-program statements)]
-      (when (:dump-statements options)
-        (->> statements (str/join "\n") println))
-      (when (:dump-database options)
-        (prn db))
-      (when (:test options)
-        (let [[success output] (testing/run-tests db)]
-          (println output)
-          (when (not success)
-            (System/exit 1))))
-      (when (:goal options)
-        (when (-> options :trace (>= 1))
-          (trace options db))
-        (-> [(-> options :goal core/parse)]
-            (core/eval-goals db (atom 0))
-            results-string
-            println)))))
+    (loop []
+      (let [muon-path (concat ["."] (:muon-path options))
+            main-module (if (= (count arguments) 1)
+                          (first arguments)
+                          (throw (Exception. (str "Exactly one positional argument is required (the main module name). "
+                                                  (count (:arguments options)) " are given."))))
+            [statements modules] (modules/load-with-dependencies main-module muon-path)
+            db (core/load-program statements)]
+        (when (:dump-statements options)
+          (->> statements (str/join "\n") println))
+        (when (:dump-database options)
+          (prn db))
+        (when (:test options)
+          (let [[success output] (testing/run-tests db)]
+            (println output)
+            (when (not success)
+              (reset! status 1))))
+        (when (:goal options)
+          (when (-> options :trace (>= 1))
+            (trace options db))
+          (-> [(-> options :goal core/parse)]
+              (core/eval-goals db (atom 0))
+              results-string
+              println))
+        (when (:autotest options)
+          (wait-for-change modules (:muon-path options))
+          (recur))))
+          (System/exit @status)))
 

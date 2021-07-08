@@ -71,7 +71,7 @@
          statements []
          modules-loaded #{}]
     (if (empty? modules-to-load)
-      statements
+      [statements modules-loaded]
       (if (modules-loaded (first modules-to-load))
         (recur (rest modules-to-load) statements modules-loaded)
         (let [module-name (first modules-to-load)

@@ -5,7 +5,9 @@
             :url "https://www.eclipse.org/legal/epl-2.0/"}
   :dependencies [[org.clojure/clojure "1.10.1"]
                  [midje "1.10.3"]
-                 [org.clojure/tools.cli "1.0.206"]]
+                 [org.clojure/tools.cli "1.0.206"]
+                 [hawk "0.2.11"]
+                 [org.clojure/core.async "1.3.618"]]
   :main muon-clj.main
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all
