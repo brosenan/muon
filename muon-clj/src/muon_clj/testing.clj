@@ -10,8 +10,8 @@
                            [:pair [:var "goal"]
                             [:pair [:var "num-results"] [:empty-list]]]]]]
                         db allocator)
-       (map (fn [result] (->> result
-                              (map (fn [[key value]] [(keyword key) value]))
+       (map (fn [result] (->> ["id" "goal" "num-results"]
+                              (map (fn [key] [(keyword key) (core/subs-vars [:var key] result)]))
                               (into {}))))
        (map #(update % :id second))
        (map #(update % :num-results second))))
