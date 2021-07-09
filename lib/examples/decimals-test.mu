@@ -29,11 +29,23 @@
 (test rev-add-0+12+1!=12
       (dec/rev-add () (2 1) 1 (2 1))
       0)
+(test rev-add-0+19+1=20
+      (dec/rev-add () (9 1) 1 (0 2))
+      1)
+(test rev-add-0+19+1!=21
+      (dec/rev-add () (9 1) 1 (1 2))
+      0)
 (test rev-add-12+0+1=13
       (dec/rev-add (2 1) () 1 (3 1))
       1)
 (test rev-add-12+0+1!=12
       (dec/rev-add (2 1) () 1 (2 1))
+      0)
+(test rev-add-19+0+1=20
+      (dec/rev-add (9 1) () 1 (0 2))
+      1)
+(test rev-add-19+0+1!=21
+      (dec/rev-add (9 1) () 1 (1 2))
       0)
 (test rev-add-12+1+0=13
       (dec/rev-add (2 1) (1) 0 (3 1))
@@ -58,6 +70,9 @@
 (test add-123+2345=2468
       (dec/add (1 2 3) (2 3 4 5) (2 4 6 8))
       1)
-(test add-123+2345=2469
+(test add-123+2345!=2469
       (dec/add (1 2 3) (2 3 4 5) (2 4 6 9))
       0)
+(test add-99999+1=100000
+      (dec/add (9 9 9 9 9) (1) :x)
+      1)
