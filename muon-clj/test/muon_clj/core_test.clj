@@ -7,6 +7,7 @@
 
 ;; `parse` translates a Muon s-expression into an AST.
 (fact
+ (parse nil) => [:empty-list]
  (parse 1) => [:int 1]
  (parse 3.14) => [:float 3.14]
  (parse "foo") => [:string "foo"]

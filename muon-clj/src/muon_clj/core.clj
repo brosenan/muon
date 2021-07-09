@@ -4,6 +4,7 @@
 
 (defn parse [expr]
   (cond
+    (nil? expr) [:empty-list]
     (int? expr) [:int expr]
     (float? expr) [:float expr]
     (string? expr) [:string expr]
