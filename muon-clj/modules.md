@@ -26,13 +26,20 @@ A `nil` key represents the default namespace.
                               "x" "xeon"} {}) => '(bar.baz/foo xeon/quux 3))
 
 ```
+If a namespace is not found in the `ns-map`, an exception is thrown.
+```clojure
+(fact
+ (convert-ns 'unknown/foo {nil "bar.baz"} {}) => (throws "Undefined namespace: unknown"))
+
+```
 The second map is the `refer-map`, similar to the `:refer` operator in Clojure `:require` expressions.
 It maps the names of namspace-less symbols into namespaces they are provided with, as override over
 the `ns-map`.
 ```clojure
 (fact
  (convert-ns 'foo {nil "bar.baz"} {"foo" "quux"}) => 'quux/foo
- (convert-ns '(foo bar) {nil "default"} {"foo" "quux"}) => '(quux/foo default/bar))
+ (convert-ns '(foo bar) {nil "default"} {"foo" "quux"}) => '(quux/foo default/bar)
+ (convert-ns 'x/foo {nil "default" "x" "xeon"} {"foo" "quux"}) => 'xeon/foo)
 
 ```
 ## Module Names and Paths
@@ -65,7 +72,7 @@ This declaration is translated into the following pieces of information:
  (parse-ns-decl '(ns foo.bar)) => [[] {nil "foo.bar"} {}])
 
 ```
-The module name is followed by a sequence of directives. The `requires` directive instructs the module system
+The module name is followed by a sequence of directives. The `require` directive instructs the module system
 to load another module and assigns an alias to it.
 Optionally, a vector of "refer" symbols is also provided.
 These symbols will be implicitly associated with that namespace when written without a namespace prefix.
@@ -75,6 +82,22 @@ These symbols will be implicitly associated with that namespace when written wit
                    (require baz.quux quux)
                    (require baz.muux muux [a b c]))) =>
  [["baz.quux" "baz.muux"]
+  {nil "foo.bar"
+   "quux" "baz.quux"
+   "muux" "baz.muux"}
+  {"a" "baz.muux"
+   "b" "baz.muux"
+   "c" "baz.muux"}])
+
+```
+The `use` directive is similar to `require`, but does not cause the module to be loaded,
+thus allowing for referencing namespaces that are not associated with modules.
+```clojure
+(fact
+ (parse-ns-decl '(ns foo.bar
+                   (use baz.quux quux)
+                   (use baz.muux muux [a b c]))) =>
+ [[]
   {nil "foo.bar"
    "quux" "baz.quux"
    "muux" "baz.muux"}
@@ -103,11 +126,13 @@ Additional symbols in the `muon` namespace: `...` and `test`.
 (fact
  (load-single-module "foo.bar" ["/some/path"]) => ['[(muon/<- (foo.bar/a :x)
                                                               (foo.bar/b :x))
-                                                     (muon/test muon/...)] []]
+                                                     (muon/test muon/...)
+                                                     (muon/clj-step muon/done muon/continue)] []]
  (provided
   (read-module "foo.bar" ["/some/path"]) => "(ns foo.bar)
                                               (<- (a :x) (b :x))
-                                             (test ...)"))
+                                             (test ...)
+                                             (clj-step done continue)"))
 
 ```
 ## Loading a Complete Program
@@ -121,12 +146,14 @@ A loading step takes the first pending module and loads it.
 It prepends its statements to the statement list and prepends the modules it requires to the pending module list.
 It also adds the loaded module to the loaded modules set to avoid loading this module again.
 `load-with-dependencies` takes the name of a "main" module and a list of `muon-path` and
-returns an aggregated list of statements from that module and all its dependencies.
+returns a pair (`statements`, `modules`) where `statements` is an aggregated list of statements that were loaded and
+`modules` is a set of modules that were loaded.
 ```clojure
 (fact
- (load-with-dependencies "test.a" ["/some/path"]) => '[(test.c/baz 42)
-                                                       (test.b/bar test.c/baz)
-                                                       (test.a/foo test.b/bar test.c/baz)]
+ (load-with-dependencies "test.a" ["/some/path"]) => '[[(test.c/baz 42)
+                                                        (test.b/bar test.c/baz)
+                                                        (test.a/foo test.b/bar test.c/baz)]
+                                                       #{"test.a" "test.b" "test.c"}]
  (provided
   (read-module "test.a" ["/some/path"]) => "(ns test.a
                                              (require test.b b)
