@@ -20,12 +20,17 @@
  (convert-ns '(foo x/quux 3) {nil "bar.baz"
                               "x" "xeon"} {}) => '(bar.baz/foo xeon/quux 3))
 
+;; If a namespace is not found in the `ns-map`, an exception is thrown.
+(fact
+ (convert-ns 'unknown/foo {nil "bar.baz"} {}) => (throws "Undefined namespace: unknown"))
+
 ;; The second map is the `refer-map`, similar to the `:refer` operator in Clojure `:require` expressions.
 ;; It maps the names of namspace-less symbols into namespaces they are provided with, as override over
 ;; the `ns-map`.
 (fact
  (convert-ns 'foo {nil "bar.baz"} {"foo" "quux"}) => 'quux/foo
- (convert-ns '(foo bar) {nil "default"} {"foo" "quux"}) => '(quux/foo default/bar))
+ (convert-ns '(foo bar) {nil "default"} {"foo" "quux"}) => '(quux/foo default/bar)
+ (convert-ns 'x/foo {nil "default" "x" "xeon"} {"foo" "quux"}) => 'xeon/foo)
 
 ;; ## Module Names and Paths
 

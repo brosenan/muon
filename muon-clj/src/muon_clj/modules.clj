@@ -12,7 +12,9 @@
                                     new-ns (if (and (empty? orig-ns)
                                                     (refer-map (name expr)))
                                              (refer-map (name expr))
-                                             (ns-map orig-ns))]
+                                             (if-let [new-ns (ns-map orig-ns)]
+                                               new-ns
+                                               (throw (Exception. (str "Undefined namespace: " orig-ns)))))]
                                 (symbol new-ns (name expr)))
                               expr)) expr))
 
