@@ -32,11 +32,11 @@
       (throw (Exception. (str "Cannot find module " module-name " in paths " (list muon-path))))
       (-> existing first slurp))))
 
-(defn- handle-require [args module-name]
+(defn- handle-directive [directive args module-name]
   (when (< (count args) 2)
-    (throw (Exception. (str "A require directive in module " module-name " requires at least two arguments. " (count args) " given."))))
+    (throw (Exception. (str "A " directive " directive in module " module-name " requires at least two arguments. " (count args) " given."))))
   (when (> (count args) 3)
-    (throw (Exception. (str "A require directive in module " module-name " requires at most three arguments. " (count args) " given."))))
+    (throw (Exception. (str "A " directive " directive in module " module-name " requires at most three arguments. " (count args) " given."))))
   (let [[name alias & others] args
         name (str name)
         alias (str alias)]
@@ -46,13 +46,21 @@
                                 (into {}))
                            {})]))
 
+(defn- handle-require [args module-name]
+  (handle-directive "require" args module-name))
+
+(defn- handle-use [args module-name]
+  (let [[_modules ns-map refer-map] (handle-directive "use" args module-name)]
+    [[] ns-map refer-map]))
+
 (defn parse-ns-decl [[_ns module-name & directives]]
   (let [module-name (str module-name)
         fold (fn [[m1 n1 r1] [m2 n2 r2]]
                [(concat m1 m2) (merge n1 n2) (merge r1 r2)])]
     (->> (for [[directive & args] directives]
            (cond
-             (= directive 'require) (handle-require args module-name)))
+             (= directive 'require) (handle-require args module-name)
+             (= directive 'use) (handle-use args module-name)))
          (reduce fold [[] {nil module-name} {}]))))
 
 (defn load-single-module [module-name muon-path]

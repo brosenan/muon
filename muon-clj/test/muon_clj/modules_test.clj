@@ -55,7 +55,7 @@
 (fact
  (parse-ns-decl '(ns foo.bar)) => [[] {nil "foo.bar"} {}])
 
-;; The module name is followed by a sequence of directives. The `requires` directive instructs the module system
+;; The module name is followed by a sequence of directives. The `require` directive instructs the module system
 ;; to load another module and assigns an alias to it.
 ;; Optionally, a vector of "refer" symbols is also provided.
 ;; These symbols will be implicitly associated with that namespace when written without a namespace prefix.
@@ -64,6 +64,20 @@
                    (require baz.quux quux)
                    (require baz.muux muux [a b c]))) =>
  [["baz.quux" "baz.muux"]
+  {nil "foo.bar"
+   "quux" "baz.quux"
+   "muux" "baz.muux"}
+  {"a" "baz.muux"
+   "b" "baz.muux"
+   "c" "baz.muux"}])
+
+;; The `use` directive is similar to `require`, but does not cause the module to be loaded,
+;; thus allowing for referencing namespaces that are not associated with modules.
+(fact
+ (parse-ns-decl '(ns foo.bar
+                   (use baz.quux quux)
+                   (use baz.muux muux [a b c]))) =>
+ [[]
   {nil "foo.bar"
    "quux" "baz.quux"
    "muux" "baz.muux"}
