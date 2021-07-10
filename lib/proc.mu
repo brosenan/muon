@@ -14,4 +14,6 @@
       (continue :expr (bind :var (let :bindings :exprs ...))))
 (<- (step (bind :input :proc) :input :outcome)
     (step :proc :_input1 :outcome))
-
+(<- (step :proc :_input :outcome)
+    (defproc :proc :commands ...)
+    (step (do :commands ...) :_input :outcome))

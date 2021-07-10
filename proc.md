@@ -1,4 +1,6 @@
   * [Doing Things in Sequence](#doing-things-in-sequence)
+  * [Letting Values be Captured](#letting-values-be-captured)
+  * [Procedures](#procedures)
 ```clojure
 (ns proc-test
   (require proc p [defproc do let])
@@ -40,7 +42,7 @@ the evaluation result is ignored.
                              (println "three") 3)))
 
 ```
-Letting Values be Captured
+## Letting Values be Captured
 The `let` construct takes a vector of bindings ((variable, expression) pairs) and zero or more expressions.
 It evaluates (through the QEPL) each expression in the bindings and binds the result to the associated variable.
 Then it evaluates the expressions for their side effects, just like a `do`.
@@ -55,14 +57,45 @@ Then it evaluates the expressions for their side effects, just like a `do`.
                              (println "two") 2
                              (println "three") 3)))
 
- (t/test-success let-binds-vars
-                 (t/qepl-sim (let [:name (input-line)
-                                   :greeting (strcat "Hello, " :name)]
-                               (println :greeting)) ()
-                             (t/sequential
-                              (input-line) "Muon"
-                              (strcat "Hello, " "Muon") "Hello, Muon"
-                              (println "Hello, Muon") ())))
+(t/test-success let-binds-vars
+                (t/qepl-sim (let [:name (input-line)
+                                  :greeting (strcat "Hello, " :name)]
+                              (println :greeting)) ()
+                            (t/sequential
+                             (input-line) "Muon"
+                             (strcat "Hello, " "Muon") "Hello, Muon"
+                             (println "Hello, Muon") ())))
 
+```
+## Procedures
+Procedures are abstractions over commands.
+A procedure is defined using the `defproc` construct, which takes a procedure form and zero or more commands to be executed.
+The procedure itself becomes a command that can be called from other procedures / `do` commands, etc.
+```clojure
+(defproc (greet :name)
+  (let [:text (strcat "Hello, " :name)]
+    (println :text)))
+
+(t/test-success procedure-call-works
+                (t/qepl-sim (greet "Muon") ()
+                            (t/sequential
+                             (strcat "Hello, " "Muon") "Hello, Muon"
+                             (println "Hello, Muon") ())))
+
+```
+Procedures can be recursive and can have different definitions for different patterns (e.g., different number of arguments).
+
+```clojure
+(defproc (greet-all))
+(defproc (greet-all :name :names ...)
+  (greet :name)
+  (greet-all :names ...))
+(t/test-success procedure-recursive-call
+                (t/qepl-sim (greet-all "Clojure" "Muon") ()
+                            (t/sequential
+                             (strcat "Hello, " "Clojure") "Hello, Clojure"
+                             (println "Hello, Clojure") ()
+                             (strcat "Hello, " "Muon") "Hello, Muon"
+                             (println "Hello, Muon") ())))
 ```
 
