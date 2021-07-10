@@ -13,6 +13,8 @@
  (parse "foo") => [:string "foo"]
  (parse 'bar) => [:symbol "bar"]
  (parse :baz) => [:var "baz"]
+ (parse true) => [:symbol "true"]
+ (parse false) => [:symbol "false"]
  (parse '()) => [:empty-list]
  (parse '(1 2)) => [:pair [:int 1] [:pair [:int 2] [:empty-list]]]
  (parse '(:x :xs muon/...)) => [:pair [:var "x"] [:var "xs"]]

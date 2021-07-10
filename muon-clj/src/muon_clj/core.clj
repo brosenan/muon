@@ -10,6 +10,7 @@
     (string? expr) [:string expr]
     (symbol? expr) [:symbol (str expr)]
     (keyword? expr) [:var (-> expr str (subs 1))]
+    (boolean? expr) [:symbol (if expr "true" "false")]
     (vector? expr) (cond
                      (and (= (count expr) 3)
                           (= (nth expr 2) 'muon/...)) [:pair (-> expr first parse) (-> expr second parse)]
