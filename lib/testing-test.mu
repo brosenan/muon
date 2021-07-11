@@ -65,23 +65,23 @@
 (p/step (some-state 2) :input (continue (input-line) (some-state 3)))
 (p/step (some-state 3) :input (continue (strcat "Hello, " :input) (some-state 4)))
 (p/step (some-state 4) :input (continue (print :input) (some-state 5)))
-(p/step (some-state 5) :input (done))
+(p/step (some-state 5) :input (return 0))
 
 ;; #### Sequential Model
 ;; `t/sequential` is arguably the simplest possible model.
 ;; It takes an even number of arguments consisting of (expr, result) pairs
 ;; and expects that the expressions be evaluated in order.
 (t/test-value sequential-model
-              (t/qepl-sim (some-state 1) ()
+              (t/qepl-sim (some-state 1) () :output
                           (t/sequential
                            (print "What is your name?") ()
                            (input-line) "Muon"
                            (strcat "Hello, " "Muon") "Hello, Muon"
-                           (print :x) ())) :x "Hello, Muon")
+                           (print "Hello, Muon") ())) :output 0)
 
 ;; The only accepting state of the model is the one where all its expressions have been evaluated.
 (t/test-failure sequential-model-fails-on-extra-expressions
-                (t/qepl-sim (some-state 1) ()
+                (t/qepl-sim (some-state 1) () :output
                             (t/sequential
                              (print "What is your name?") ()
                              (input-line) "Muon"

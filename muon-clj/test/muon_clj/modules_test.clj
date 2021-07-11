@@ -108,12 +108,12 @@
  (load-single-module "foo.bar" ["/some/path"]) => ['[(muon/<- (foo.bar/a :x)
                                                               (foo.bar/b :x))
                                                      (muon/test muon/...)
-                                                     (muon/clj-step muon/done muon/continue)] []]
+                                                     (muon/clj-step muon/return muon/continue)] []]
  (provided
   (read-module "foo.bar" ["/some/path"]) => "(ns foo.bar)
                                               (<- (a :x) (b :x))
                                              (test ...)
-                                             (clj-step done continue)"))
+                                             (clj-step return continue)"))
 
 ;; ## Loading a Complete Program
 

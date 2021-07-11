@@ -11,12 +11,12 @@
 (<- (test :name :goal 0)
     (test-failure :name :goal))
 
-(<- (qepl-sim :state :input :model)
+(<- (qepl-sim :state :input :output :model)
     (p/step :state :input :next)
     (case :next
       (continue :expr :next-state) (& (handle-expr :model :expr :result :next-model)
-                                      (qepl-sim :next-state :result :next-model))
-      (done) (final? :model)))
+                                      (qepl-sim :next-state :result :output :next-model))
+      (return :output) (final? :model)))
 
 (handle-expr (sequential :expr :result :others ...) :expr :result (sequential :others ...))
 (final? (sequential))

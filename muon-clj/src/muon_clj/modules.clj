@@ -4,7 +4,7 @@
             [clojure.string :as str]
             [clojure.java.io :as io]))
 
-(def muon-symbols ["<-" "..." "test" "clj-step" "done" "continue"])
+(def muon-symbols ["<-" "..." "test" "clj-step" "return" "continue"])
 
 (defn convert-ns [expr ns-map refer-map]
   (walk/postwalk (fn [expr] (if (symbol? expr)

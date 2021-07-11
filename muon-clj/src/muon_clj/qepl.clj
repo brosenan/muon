@@ -20,16 +20,16 @@
           (throw (Exception. (str "Ambiguous progression for state: "
                                   (-> state core/format-muon prn-str)))))
         (let [result (first results)]
-          (if (core/unify [:var "next"]
-                          [:pair [:symbol "muon/done"] [:empty-list]]
-                          result)
-            nil
+          (if-let [result (core/unify [:var "next"]
+                                      [:pair [:symbol "muon/return"] [:pair [:var "retval"] [:empty-list]]]
+                                      result)]
+            (-> [:var "retval"] (core/subs-vars result) core/format-muon)
             (if-let [result (core/unify [:var "next"]
                                         [:pair [:symbol "muon/continue"]
                                          [:pair [:var "expr"]
                                           [:pair [:var "state"] [:empty-list]]]]
                                         result)]
-              (let [expr (core/format-muon (core/subs-vars [:var "expr"] result))
+              (let [expr (-> [:var "expr"] (core/subs-vars result) core/format-muon)
                     value (eval expr)
                     parsed-value (core/parse value)
                     next-state (core/subs-vars [:var "state"] result)]

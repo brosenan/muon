@@ -14,7 +14,7 @@
 ;; Borrowing from [REPL](https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop), QEPL stands for __Query-Eval-Parse Loop__.
 ;; This is a loop that runs outside the Muon program and starts with the Query step, which
 ;; queries the Muon program for the next `muon/clj-step`, given a certain initial state.
-;; The response could be either `muon/done`, which ends the loop, or `muon/continue`, which also provides two arguments:
+;; The response could be either `muon/return`, which ends the loop, or `muon/continue`, which also provides two arguments:
 ;; * A Clojure expression to be evaluated, and
 ;; * The next state.
 ;;
@@ -32,8 +32,8 @@
                                (muon/clj-step 2 :input (muon/continue (clojure.core/read-line) 3))
                                (muon/clj-step 3 :input (muon/continue (clojure.core/str "Hello, " :input) 4))
                                (muon/clj-step 4 :input (muon/continue (muon-clj.qepl-test/my-println :input) 5))
-                               (muon/clj-step 5 :input (muon/done))])]
-   (qepl db [:int 1]) => nil
+                               (muon/clj-step 5 :input (muon/return 42))])]
+   (qepl db [:int 1]) => 42
    (provided
     (my-println "What is your name?") => nil
     (read-line) => "Muon"
@@ -44,7 +44,7 @@
 (fact
  (let [db (core/load-program '[(muon/clj-step 1 :input (muon/continue (muon-clj.qepl-test/my-println "What is your name?") 2))
                                (muon/clj-step 1 :input (muon/continue (muon-clj.qepl-test/my-println "Was heißt du?") 2))
-                               (muon/clj-step 2 :input (muon/done))])]
+                               (muon/clj-step 2 :input (muon/return 43))])]
    (qepl db [:int 1]) => (throws "Ambiguous progression for state: 1\n")
    (qepl db [:int 3]) => (throws "No progression for state: 3\n")))
 
@@ -52,8 +52,8 @@
 ;; In the following example, the state consists of a list of strings to be printed.
 (fact
  (let [db (core/load-program '[(muon/clj-step (:x :xs muon/...) :input (muon/continue (muon-clj.qepl-test/my-println :x) :xs))
-                               (muon/clj-step () :input (muon/done))])]
-   (qepl db (core/parse '("one" "two" "three"))) => nil
+                               (muon/clj-step () :input (muon/return 5))])]
+   (qepl db (core/parse '("one" "two" "three"))) => 5
    (provided
     (my-println "one") => nil
     (my-println "two") => nil
