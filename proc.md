@@ -1,19 +1,59 @@
+  * [Terminology](#terminology)
+  * [Constants and Pass Through](#constants-and-pass-through)
+* [NExpr as PExpr](#nexpr-as-pexpr)
   * [Doing Things in Sequence](#doing-things-in-sequence)
   * [Letting Values be Captured](#letting-values-be-captured)
   * [Procedures](#procedures)
 ```clojure
 (ns proc-test
-  (require proc p [defproc do let])
+  (require proc p [defproc do let const])
   (require testing t))
 
 ```
 This module is responsible for defining procedural, or imperative constructs for Muon.
 This is done in terms of the `p/step` predicate, which implements a state-machine using the [QEPL](muon-clj/qepl.md).
 
+## Terminology
+We use the term _state_ to refer to a legal first argument of `p/step`.
+One common but specific case for state is a _procedural expressions_, or _PExpr_ for short.
+This is a term which corresponds to some computation that needs to take place (possibly, including side effects),
+which evaluates to some value.
+The building blocks of computation, the smallest, indivisible pieces of the interpretation of a PExpr are
+_native expressions_, or _NExprs_ for short.
+NExprs are expressions in the host language (Clojure in the original implementation of Muon) which are
+often simple, primitive operations, evaluated by the QEPL.
+
+## Constants and Pass Through
+A `(const :value)` PExpr simply returns the constant it holds as argument.
+```clojure
+(t/test-value const-returns-value
+              (p/step (const 42) some-input-to-be-ignored (return :value))
+              :value
+              42)
+
+```
+An `input` PExpr will return whatever input it is given.
+```clojure
+(t/test-value input-returns-its-input
+              (p/step p/input 42 (return :value))
+              :value
+              42)
+
+```
+# NExpr as PExpr
+Every NExpr can be used as a PExpr.
+`step`ping through it will result in a transition to an `input` state,
+such that the value the NExpr evaluates to is returned.
+```clojure
+(t/test-value nexpr-as-pexpr
+              (t/qepl-sim (some-pexpr 1 2 3) () :retval
+                          (t/sequential
+                           (some-pexpr 1 2 3) 42)) :retval 42)
+
+```
 ## Doing Things in Sequence
-The `do` construct contains instructions that are processed in sequence.
-If an instruction is an expression to be evaluated by the QEPL (or its simulator),
-the evaluation result is ignored.
+The `do` PExpr contains zero or more PExprs that are evaluated in sequence.
+The `do` PExpr evaluates to the value returned by its last element.
 ```clojure
 (t/test-value do-empty-is-done
               (t/qepl-sim (do) () :retval
@@ -21,31 +61,20 @@ the evaluation result is ignored.
 (t/test-value do-executes-in-sequence
               (t/qepl-sim (do
                             (println "one")
-                            (println "two")
-                            (println "three")) () :retval
+                            (do (println "two")
+                                (println "three"))
+                            (const 42)) () :retval
                           (t/sequential
                            (println "one") 1
                            (println "two") 2
-                           (println "three") 3)) :retval 3)
-
-```
-`do`s can be nested.
-```clojure
-(t/test-value do-nested
-              (t/qepl-sim (do
-                            (do (println "one")
-                                (do (println "two")))
-                            (do (println "three"))) () :retval
-                          (t/sequential
-                           (println "one") 1
-                           (println "two") 2
-                           (println "three") 3)) :retval 3)
+                           (println "three") 3)) :retval 42)
 
 ```
 ## Letting Values be Captured
-The `let` construct takes a vector of bindings ((variable, expression) pairs) and zero or more expressions.
-It evaluates (through the QEPL) each expression in the bindings and binds the result to the associated variable.
-Then it evaluates the expressions for their side effects, just like a `do`.
+The `let` PExpr takes a vector of bindings ((variable, PExpr) pairs) and zero or more PExprs.
+It evaluates each PExpr in the bindings and binds the result to the associated variable.
+Then it evaluates the PExprs in the body for their side effects, just like a `do`,
+returning the value returned by the last of them.
 ```clojure
 (t/test-value let-as-do
               (t/qepl-sim (let []
@@ -58,27 +87,36 @@ Then it evaluates the expressions for their side effects, just like a `do`.
                            (println "three") 3)) :retval 3)
 
 (t/test-value let-binds-vars
-              (t/qepl-sim (let [:name (input-line)
+              (t/qepl-sim (let [:name (do (println "What is your name?")
+                                          (input-line))
                                 :greeting (strcat "Hello, " :name)]
                             (println :greeting)) () :retval
                           (t/sequential
+                           (println "What is your name?") ()
                            (input-line) "Muon"
                            (strcat "Hello, " "Muon") "Hello, Muon"
                            (println "Hello, Muon") ())) :retval ())
 
 ```
 ## Procedures
-Procedures are abstractions over commands.
-A procedure is defined using the `defproc` construct, which takes a procedure form and zero or more commands to be executed.
-The procedure itself becomes a command that can be called from other procedures / `do` commands, etc.
+Procedures are abstractions over PExprs.
+A procedure is defined using the `defproc` predicate, which takes a PExpr as head and zero or more PExprs as its body.
+This defines the head as a new PExpr.
 ```clojure
+(defproc (prompt :prompt)
+  (println :prompt)
+  (input-line))
+
 (defproc (greet :name)
   (let [:text (strcat "Hello, " :name)]
     (println :text)))
 
-(t/test-value procedure-call-works
-              (t/qepl-sim (greet "Muon") () :retval
+(t/test-value procedure-call
+              (t/qepl-sim (let [:name (prompt "What is your name?")]
+                            (greet :name)) () :retval
                           (t/sequential
+                           (println "What is your name?") ()
+                           (input-line) "Muon"
                            (strcat "Hello, " "Muon") "Hello, Muon"
                            (println "Hello, Muon") ())) :retval ())
 
