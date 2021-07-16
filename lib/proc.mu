@@ -12,13 +12,16 @@
       (return :retval) (step (do :rest ...) :retval :outcome)
       (continue :expr :next-first) (= :outcome (continue :expr (do :next-first :rest ...)))))
 
-(<- (step (let [] :pexprs ...) :input :outcome)
-    (step (do :pexprs ...) :input :outcome))
-(<- (step (let [:var :pexpr :bindings ...] :pexprs ...) :_input1 :outcome)
-    (step :pexpr :_input2 :suboutcome)
+(defproc (let [] :pexprs ...) (do :pexprs ...))
+(<- (step (let [:var :pexpr :bindings ...] :pexprs ...) :input :outcome)
+    (step :pexpr :input :suboutcome)
     (case :suboutcome
-      (return :var) (step (let :bindings :pexprs ...) :_input3 :outcome)
+      (return :var) (step (let :bindings :pexprs ...) :input :outcome)
       (continue :nexpr :subnext) (= :outcome (continue :nexpr (let [:var :subnext :bindings ...] :pexprs ...)))))
+
 (<- (step :proc :input :outcome)
-    (defproc :proc :commands ...)
-    (step (do :commands ...) :input :outcome))
+    (defproc :proc :body ...)
+    (case :body
+      () (step input :input :outcome)
+      (:pexpr) (step :pexpr :input :outcome)
+      (:pexpr :pexprs ...) (step (do :pexpr :pexprs ...) :input :outcome)))
