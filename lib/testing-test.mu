@@ -1,6 +1,6 @@
 (ns testing-test
   (require testing t)
-  (require proc p))
+  (require proc p [>>]))
 
 ;; The `test` predicate is the main way of defining tests in Muon.
 ;; It is covered int [the Clojure implementation documentation](muon-clj/testing.md).
@@ -15,18 +15,21 @@
 ;;
 ;; To address this, the `test-value` predicate allows its users to define tests in which we make sure that the goal matches the expected value,
 ;; but not trivially.
-;; We do this by translating every `test-value` result into two `test` results, one expecting one success with the concrete value,
-;; and one expecting failure with a different value.
+;; We do this by translating every `test-value` result into three `test` results, one expecting one success with the concrete value,
+;; one expecting failure with a different value and a third that expects exactly one success while providing a free variable as the result.
 (t/test-value foo-returns-bar
               (foo :x) :x "bar")
-(test test-value-creates-two-tests
+(test test-value-creates-three-tests
       (test foo-returns-bar :test :count)
-      2)
+      3)
 (test test-value-creates-test-for-value
       (test foo-returns-bar (foo "bar") 1)
       1)
 (test test-value-creates-anti-test-for-arbitrary-value
       (test foo-returns-bar (foo t/not-a-value) 0)
+      1)
+(test test-value-creates-test-for-single-result
+      (test foo-returns-bar (foo some-value-to-match-a-free-var) 1)
       1)
 
 ;; ## Success and Failure Testing
@@ -88,3 +91,22 @@
                              (strcat "Hello, " "Muon") "Hello, Muon"
                              (print "Hello, Muon") ()
                              (print "Something else...") ())))
+
+;; ### Model Testing
+;; As a convenience, the `t/test-model` predicate defines tests that use the `t/qepl-sim` predicate and tests for an expected output.
+;; Any solution to this predicate is converted into a corresponding `t/test-value` result.
+;; For example, given the following definition:
+(t/test-model my-model-test
+              (>> input-line)
+              "foo"
+              (t/sequential
+               (input-line) "foo"))
+;; The following `t/test-value` is defined:
+(t/test-value my-model-test-defines-a-test-value
+              (t/test-value my-model-test :args ...)
+              :args
+              ((t/qepl-sim (>> input-line) () x (t/sequential
+                                                 (input-line) "foo"))
+               x
+               "foo"))
+

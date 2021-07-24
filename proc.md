@@ -8,11 +8,11 @@
   * [Functions](#functions)
 ```clojure
 (ns proc-test
-  (require proc p [defproc defun do let const >> list])
+  (require proc p [defproc defun do let ' >> list])
   (require testing t))
 
 ```
-This module is responsible for defining procedural, or imperative constructs for Muon.
+This module is responsible for defining procedural, or imperative 'ructs for Muon.
 This is done in terms of the `p/step` predicate, which implements a state-machine using the [QEPL](muon-clj/qepl.md).
 
 ## Terminology
@@ -26,10 +26,10 @@ NExprs are expressions in the host language (Clojure in the original implementat
 often simple, primitive operations, evaluated by the QEPL.
 
 ## Constants and Pass Through
-A `(const :value)` PExpr simply returns the constant it holds as argument.
+A `(' :value)` PExpr simply returns the constant it holds as argument.
 ```clojure
-(t/test-value const-returns-value
-              (p/step (const 42) some-input-to-be-ignored (return :value))
+(t/test-value '-returns-value
+              (p/step (' 42) some-input-to-be-ignored (return :value))
               :value
               42)
 
@@ -48,44 +48,44 @@ For example, the PExpr `(>> println "hello, world")` represents the NExpr `(prin
 `step`ping through it will result in a transition to an `input` state,
 such that the value the NExpr evaluates to is returned.
 ```clojure
-(t/test-value >>-turns-nexpr-to-pexpr
-              (t/qepl-sim (>> some-nexpr 1 2 3) () :retval
-                          (t/sequential
-                           (some-nexpr 1 2 3) 42)) :retval 42)
+(t/test-model >>-turns-nexpr-to-pexpr
+              (>> some-nexpr 1 2 3) 42
+              (t/sequential
+               (some-nexpr 1 2 3) 42))
 
 ```
 ## Doing Things in Sequence
 The `do` PExpr contains zero or more PExprs that are evaluated in sequence.
 The `do` PExpr evaluates to the value returned by its last element.
 ```clojure
-(t/test-value do-empty-is-done
-              (t/qepl-sim (do) () :retval
-                          (t/sequential)) :retval ())
-(t/test-value do-executes-in-sequence
-              (t/qepl-sim (do
-                            (>> println "one")
-                            (do (>> println "two")
-                                (>> println "three"))
-                            (const 42)) () :retval
-                          (t/sequential
-                           (println "one") 1
-                           (println "two") 2
-                           (println "three") 3)) :retval 42)
+(t/test-model do-empty-is-done
+              (do) ()
+              (t/sequential))
+(t/test-model do-executes-in-sequence
+              (do
+                (>> println "one")
+                (do (>> println "two")
+                    (>> println "three"))
+                (' 42)) 42
+              (t/sequential
+               (println "one") 1
+               (println "two") 2
+               (println "three") 3))
 
 ```
 ## Constructing Lists
 The `list` PExpr takes zero or more PExprs, evaluates them and returns a list of their values.
 ```clojure
-(t/test-value list-empty
-              (t/qepl-sim (list) () :retval
-                          (t/sequential)) :retval ())
-(t/test-value list-one-elem
-              (t/qepl-sim (p/list (const 42)) () :retval
-                          (t/sequential)) :retval (42))
-(t/test-value list-non-empty
-              (t/qepl-sim (p/list (const 42) (>> input-line)) () :retval
-                          (t/sequential
-                           (input-line) "foo")) :retval (42 "foo"))
+(t/test-model list-empty
+              (list) ()
+              (t/sequential))
+(t/test-model list-one-elem
+              (p/list (' 42)) (42)
+              (t/sequential))
+(t/test-model list-non-empty
+              (p/list (' 42) (>> input-line)) (42 "foo")
+              (t/sequential
+               (input-line) "foo"))
 
 ```
 ## Letting Values be Captured
@@ -94,26 +94,26 @@ It evaluates each PExpr in the bindings and binds the result to the associated v
 Then it evaluates the PExprs in the body for their side effects, just like a `do`,
 returning the value returned by the last of them.
 ```clojure
-(t/test-value let-as-do
-              (t/qepl-sim (let []
-                            (>> println "one")
-                            (>> println "two")
-                            (>> println "three")) () :retval
-                          (t/sequential
-                           (println "one") 1
-                           (println "two") 2
-                           (println "three") 3)) :retval 3)
+(t/test-model let-as-do
+              (let []
+                (>> println "one")
+                (>> println "two")
+                (>> println "three")) 3
+              (t/sequential
+               (println "one") 1
+               (println "two") 2
+               (println "three") 3))
 
-(t/test-value let-binds-vars
-              (t/qepl-sim (let [:name (do (>> println "What is your name?")
-                                          (>> input-line))
-                                :greeting (>> strcat "Hello, " :name)]
-                            (>> println :greeting)) () :retval
-                          (t/sequential
-                           (println "What is your name?") ()
-                           (input-line) "Muon"
-                           (strcat "Hello, " "Muon") "Hello, Muon"
-                           (println "Hello, Muon") ())) :retval ())
+(t/test-model let-binds-vars
+              (let [:name (do (>> println "What is your name?")
+                              (>> input-line))
+                    :greeting (>> strcat "Hello, " :name)]
+                (>> println :greeting)) ()
+              (t/sequential
+               (println "What is your name?") ()
+               (input-line) "Muon"
+               (strcat "Hello, " "Muon") "Hello, Muon"
+               (println "Hello, Muon") ()))
 
 ```
 ## Procedures
@@ -129,14 +129,14 @@ This defines the head as a new PExpr.
   (let [:text (>> strcat "Hello, " :name)]
     (>> println :text)))
 
-(t/test-value procedure-call
-              (t/qepl-sim (let [:name (prompt "What is your name?")]
-                            (greet :name)) () :retval
-                          (t/sequential
-                           (println "What is your name?") ()
-                           (input-line) "Muon"
-                           (strcat "Hello, " "Muon") "Hello, Muon"
-                           (println "Hello, Muon") ())) :retval ())
+(t/test-model procedure-call
+              (let [:name (prompt "What is your name?")]
+                (greet :name)) ()
+              (t/sequential
+               (println "What is your name?") ()
+               (input-line) "Muon"
+               (strcat "Hello, " "Muon") "Hello, Muon"
+               (println "Hello, Muon") ()))
 
 ```
 Procedures can be recursive and can have different definitions for different patterns (e.g., different number of arguments).
@@ -146,13 +146,13 @@ Procedures can be recursive and can have different definitions for different pat
 (defproc (greet-all :name :names ...)
   (greet :name)
   (greet-all :names ...))
-(t/test-value procedure-recursive-call
-              (t/qepl-sim (greet-all "Clojure" "Muon") () :retval
-                          (t/sequential
-                           (strcat "Hello, " "Clojure") "Hello, Clojure"
-                           (println "Hello, Clojure") ()
-                           (strcat "Hello, " "Muon") "Hello, Muon"
-                           (println "Hello, Muon") ())) :retval ())
+(t/test-model procedure-recursive-call
+              (greet-all "Clojure" "Muon") ()
+              (t/sequential
+               (strcat "Hello, " "Clojure") "Hello, Clojure"
+               (println "Hello, Clojure") ()
+               (strcat "Hello, " "Muon") "Hello, Muon"
+               (println "Hello, Muon") ()))
 
 ```
 __Note:__ Procedures are a low-level concept and should be used with care.
@@ -182,7 +182,7 @@ For variadic functions, replace the `:params` vector with the form `(p/var :posi
 (t/test-value bind-args-variadic
               (p/bind-args (p/var [one] twothree) (1 2 3) :bindings)
               :bindings [one 1
-                         twothree (const (2 3))])
+                         twothree (' (2 3))])
 
 ```
 `(defun :name :params :body ...)` defines a function.
@@ -193,11 +193,11 @@ For example, the following function takes any number of strings and prints them.
   (>> println :str)
   (print-all :strs ...))
 
-(t/test-value defun-defines-function
-              (t/qepl-sim (print-all (const "one")
-                                     (const "two")) () :retval
-                          (t/sequential
-                           (println "one") ()
-                           (println "two") ())) :retval ())
+(t/test-model defun-defines-function
+              (print-all ('"one")
+                         ('"two")) ()
+              (t/sequential
+               (println "one") ()
+               (println "two") ()))
 ```
 

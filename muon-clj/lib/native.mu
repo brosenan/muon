@@ -1,4 +1,4 @@
-(ns base
+(ns native
   (use clojure.core clj)
   (use Integer int)
   (use Double dbl)
@@ -31,7 +31,7 @@
 
 ;; Conversion functions
 (clj-expr-name1 string-to-int int/parseInt)
-(clj-expr-name1 string-to-float dlb/parseDouble)
+(clj-expr-name1 string-to-float dbl/parseDouble)
 (clj-expr-name1 int-to-float clj/float)
 (clj-expr-name1 int-to-string clj/str)
 (clj-expr-name1 float-to-int clj/int)

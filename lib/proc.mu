@@ -2,7 +2,7 @@
   (require logic l [= & case])
   (require lists ls [concat]))
 
-(step (const :value) :_input (return :value))
+(step (' :value) :_input (return :value))
 (step input :input (return :input))
 (step (>> :nexpr ...) :_input (continue :nexpr input))
 
@@ -38,12 +38,12 @@
     (case :body
       () (step input :input :outcome)
       (:pexpr) (step :pexpr :input :outcome)
-      (:pexpr :pexprs ...) (step (do :pexpr :pexprs ...) :input :outcome)))
+      (:pexpr1 :pexpr2 :pexprs ...) (step (do :pexpr1 :pexpr2 :pexprs ...) :input :outcome)))
 
 (bind-args [] () [])
 (<- (bind-args [:param :params ...] (:arg :args ...) [:param :arg :bindings ...])
     (bind-args :params :args :bindings))
-(bind-args (var [] :others) :args [:others (const :args)])
+(bind-args (var [] :others) :args [:others (' :args)])
 (<- (bind-args (var [:param :params ...] :others) (:arg :args ...) [:param :arg :bindings ...])
     (bind-args (var :params :others) :args :bindings))
 
