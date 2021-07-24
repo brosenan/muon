@@ -1,5 +1,5 @@
 (ns proc-test
-  (require proc p [defproc defun do let ' >> list partial])
+  (require proc p [defproc defun do let ' >> list partial case if])
   (require testing t))
 
 ;; This module is responsible for defining procedural, or imperative 'ructs for Muon.
@@ -237,3 +237,43 @@
                (println "foo") ()
                (println "bar") ()
                (println "baz") ()))
+
+;; Conditionals
+
+;; The `case` conditional works similarly to its [logic counterpart](logic.md#pattern-matching-case).
+;; The PExpr `(case :pexpr :cases ...)` first evaluates `:pexpr`.
+;; Then it matches it against `:cases`, which is an even number of terms, with each pair consisting of
+;; a value-pattern for `:pexpr` and a PExpr to be evaluated if there is a match.
+;;
+;; In the following example we get an input from the user.
+;; If the input is "foo" we print "bar" and vice versa.
+(t/test-model case-matches-input
+              (case (>> input-line)
+                "foo" (>> println "bar")
+                "bar" (>> println "foo"))
+              ()
+              (t/sequential
+               (input-line) "bar"
+               (println "foo") ()))
+
+;; Please note that `case` assumes that _exactly_ one arm is matched for every possible value.
+;;
+;; A common case where we want to match against values is where they are Boolan
+;; and we wish to treat `true` and `false` in different ways.
+;; The `if` PExpr is used for that.
+(t/test-model if-takes-true-path
+              (if (>> == 1 1)
+                (>> println "True")
+                (>> println "False"))
+              42
+              (t/sequential
+               (== 1 1) true
+               (println "True") 42))
+(t/test-model if-takes-false-path
+              (if (>> == 1 2)
+                (>> println "True")
+                (>> println "False"))
+              43
+              (t/sequential
+               (== 1 2) false
+               (println "False") 43))

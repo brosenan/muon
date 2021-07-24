@@ -1,5 +1,5 @@
 (ns proc
-  (require logic l [= & case])
+  (require logic l [= &])
   (require lists ls [concat]))
 
 (step (' :value) :_input (return :value))
@@ -9,7 +9,7 @@
 (step (do) :input (return :input))
 (<- (step (do :first :rest ...) :input :outcome)
     (step :first :input :first-outcome)
-    (case :first-outcome
+    (l/case :first-outcome
       (return :retval) (step (do :rest ...) :retval :outcome)
       (continue :expr :next-first) (= :outcome (continue :expr (do :next-first :rest ...)))))
 
@@ -19,7 +19,7 @@
 (step (list-cat () :vals) :_input (return :vals))
 (<- (step (list-cat (:pexpr :pexprs ...) :vals) :input :outcome)
     (step :pexpr :input :suboutcome)
-    (case :suboutcome
+    (l/case :suboutcome
       (return :val) (& (concat :vals (:val) :new-vals)
                        (step (list-cat :pexprs :new-vals) :input :outcome))
       (continue :nexpr :next) (= :outcome (continue :nexpr (list-cat (:next :pexprs ...) :vals)))))
@@ -29,13 +29,13 @@
 (defproc (let [] :pexprs ...) (do :pexprs ...))
 (<- (step (let [:var :pexpr :bindings ...] :pexprs ...) :input :outcome)
     (step :pexpr :input :suboutcome)
-    (case :suboutcome
+    (l/case :suboutcome
       (return :var) (step (let :bindings :pexprs ...) :input :outcome)
       (continue :nexpr :subnext) (= :outcome (continue :nexpr (let [:var :subnext :bindings ...] :pexprs ...)))))
 
 (<- (step :proc :input :outcome)
     (defproc :proc :body ...)
-    (case :body
+    (l/case :body
       () (step input :input :outcome)
       (:pexpr) (step :pexpr :input :outcome)
       (:pexpr1 :pexpr2 :pexprs ...) (step (do :pexpr1 :pexpr2 :pexprs ...) :input :outcome)))
@@ -65,3 +65,17 @@
 (quote-all () ())
 (<- (quote-all (:x :xs ...) ((' :x) :qxs ...))
     (quote-all :xs :qxs))
+
+(defproc (case :pexpr :cases ...)
+  (let [:value :pexpr]
+    (case-match :value :cases ...)))
+
+(defproc (case-match :value :value :pexpr :_cases ...)
+  :pexpr)
+(defproc (case-match :value :_pattern :_pexpr :cases ...)
+  (case-match :value :cases ...))
+
+(defproc (if :cond :then :else)
+  (case :cond
+    true :then
+    false :else))
