@@ -6,9 +6,10 @@
   * [Letting Values be Captured](#letting-values-be-captured)
   * [Procedures](#procedures)
   * [Functions](#functions)
+  * [Functional Programming](#functional-programming)
 ```clojure
 (ns proc-test
-  (require proc p [defproc defun do let ' >> list])
+  (require proc p [defproc defun do let ' >> list partial])
   (require testing t))
 
 ```
@@ -199,5 +200,85 @@ For example, the following function takes any number of strings and prints them.
               (t/sequential
                (println "one") ()
                (println "two") ()))
+
+```
+## Functional Programming
+
+To support functional programming we are required to treat functions as first-class values.
+This is achievable without any explicit support, just by the fact that both expressions and values are Muon terms.
+Consider the following two functions, `foo` and `bar`, which print "foo" and "bar", respectively.
+```clojure
+(defun foo []
+  (>> println "foo"))
+(defun bar []
+  (>> println "bar"))
+
+```
+Now, consider another function `do-something`, which takes as parameter a function and calls it.
+```clojure
+(defun do-something [:f]
+  (>> println "And the function is:")
+  (:f))
+
+```
+Calling `do-something` with `foo` will print "foo" and calling `do-something` with `bar` will print "bar".
+```clojure
+(t/test-model using-function-name-as-parameter
+              (do
+                (do-something foo)
+                (do-something bar))
+              ()
+              (t/sequential
+               (println "And the function is:") ()
+               (println "foo") ()
+               (println "And the function is:") ()
+               (println "bar") ()))
+
+```
+Note that we did not have to quote the function names because a function name evaluates to itself.
+```clojure
+(t/test-model function-name-evaluates-to-itself
+              foo
+              foo
+              (t/sequential))
+
+```
+The `partial` function takes a name of a function and zero or more parameters.
+It evaluates the parameters and returns a closure that specifies the function and parameter values.
+```clojure
+(t/test-model partial-returns-closure
+              (partial print-all (>> input-line) (>> input-line))
+              (p/closure print-all ("foo" "bar"))
+              (t/sequential
+               (input-line) "foo"
+               (input-line) "bar"))
+
+```
+A list that has a `closure` as its first element is a PExpr and is equivalent to calling the function
+associated with the closure with a concatenation of the parameters from the closure (quoted) and the
+parameters in the list.
+For example, the following call to `print-all` will print both the closure parameters and the actual parameters.
+```clojure
+(t/test-model closure-call
+              ((p/closure print-all ("foo" "bar")) (' "baz"))
+              ()
+              (t/sequential
+               (println "foo") ()
+               (println "bar") ()
+               (println "baz") ()))
+
+```
+The following example puts this together.
+```clojure
+(t/test-model partial-call
+              (let [:f (partial print-all (>> input-line) (>> input-line))]
+                (:f (' "baz")))
+              ()
+              (t/sequential
+               (input-line) "foo"
+               (input-line) "bar"
+               (println "foo") ()
+               (println "bar") ()
+               (println "baz") ()))
 ```
 

@@ -50,3 +50,18 @@
 (<- (defproc (:name :args ...) (let :bindings :body ...))
     (defun :name :params :body ...)
     (bind-args :params :args :bindings))
+
+(<- (step :f :_input (return :f))
+    (defun :f :_params :_body ...))
+
+(defproc (partial :f :args ...)
+  (list (' closure) :f (list :args ...)))
+
+(<- (defproc ((closure :f :cargs) :args ...)
+      (:f :all-args ...))
+    (quote-all :cargs :qcargs)
+    (concat :qcargs :args :all-args))
+
+(quote-all () ())
+(<- (quote-all (:x :xs ...) ((' :x) :qxs ...))
+    (quote-all :xs :qxs))
