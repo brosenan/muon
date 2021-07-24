@@ -7,6 +7,7 @@
   * [Procedures](#procedures)
   * [Functions](#functions)
   * [Functional Programming](#functional-programming)
+  * [Conditionals](#conditionals)
 ```clojure
 (ns proc-test
   (require proc p [defproc defun do let ' >> list partial case if])
@@ -282,7 +283,7 @@ The following example puts this together.
                (println "baz") ()))
 
 ```
-Conditionals
+## Conditionals
 
 The `case` conditional works similarly to its [logic counterpart](logic.md#pattern-matching-case).
 The PExpr `(case :pexpr :cases ...)` first evaluates `:pexpr`.

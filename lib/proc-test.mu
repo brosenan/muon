@@ -238,7 +238,7 @@
                (println "bar") ()
                (println "baz") ()))
 
-;; Conditionals
+;; ## Conditionals
 
 ;; The `case` conditional works similarly to its [logic counterpart](logic.md#pattern-matching-case).
 ;; The PExpr `(case :pexpr :cases ...)` first evaluates `:pexpr`.
