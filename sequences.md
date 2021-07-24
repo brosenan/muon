@@ -57,5 +57,6 @@ Lists and vectors are sequences.
               (rest ('[1 2 3]))
               [2 3]
               (t/sequential))
+
 ```
 
