@@ -77,7 +77,7 @@ and then the rest are subtracted from the result.
                (n/- 3 2) 1))
 
 ```
-'*' returns 1 when called with no arguments
+`*` returns 1 when called with no arguments
 ```clojure
 (t/test-model *-with-no-args-returns-1
               (*)

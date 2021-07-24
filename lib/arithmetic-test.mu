@@ -60,7 +60,7 @@
                (n/- 6 3) 3
                (n/- 3 2) 1))
 
-;; '*' returns 1 when called with no arguments
+;; `*` returns 1 when called with no arguments
 (t/test-model *-with-no-args-returns-1
               (*)
               1
