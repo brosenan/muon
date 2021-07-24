@@ -12,7 +12,7 @@
   (>> n/+ :a :b))
 
 (defproc (+ :a-expr :b-expr :c-expr :exprs ...)
-  (+ :a-expr (+ :b-expr :c-expr :exprs ...)))
+  (+ (+ :a-expr :b-expr) :c-expr :exprs ...))
 
 (defun - [:x]
   (' :x))

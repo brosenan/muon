@@ -35,16 +35,16 @@ With one argument it returns the argument.
               (t/sequential))
 
 ```
-With three arguments and more it sums all the arguments from the last to the first.
+With three arguments and more it sums all the arguments in order.
 ```clojure
 (t/test-model +-sums-its-arguments
               (+ (' 1) (' 2) (' 3) (' 4) (' 5))
               15
               (t/sequential
-               (n/+ 4 5) 9
-               (n/+ 3 9) 12
-               (n/+ 2 12) 14
-               (n/+ 1 14) 15))
+               (n/+ 1 2) 3
+               (n/+ 3 3) 6
+               (n/+ 6 4) 10
+               (n/+ 10 5) 15))
 
 ```
 The `-` operator takes at least one argument.
