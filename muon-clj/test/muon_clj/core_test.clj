@@ -93,20 +93,21 @@
 ;; `[:head :body]` such that for a rule `(muon/<- :head :body ...)` `:head` and `:body` are taken verbatim, and for a fact `:fact`, `:head`
 ;; is taken as `:fact` and `:body` is taken as `()`.
 (fact
- (map format-muon
+ (map format-muon2
       (-> '(muon/<- (foo :bar)
-                    (bar :foo)) parse normalize-statement)) => ['(foo :bar) ['(bar :foo)]]
- (map format-muon
-      (-> '(foo :bar) parse normalize-statement)) => ['(foo :bar) []])
+                    (bar :foo)) parse2 normalize-statement2)) => ['(foo :bar) ['(bar :foo)]]
+ (map format-muon2
+      (-> '(foo :bar) parse2 normalize-statement2)) => ['(foo :bar) []])
 
 ;; Normalized rules are stored in a database formed as a [trie](trie.md).
 ;; The keys in this trie are serializations of ASTs, which are trimmed at the first variable.
 ;; The function `term-key` takes an AST of a term and returns a sequence of tokens acting as its database key:
 (fact
- (term-key [:symbol "foo"]) => ["foo"]
- (term-key [:pair [:symbol "foo"] [:int 42]]) => [:pair "foo" 42]
- (term-key [:pair [:symbol "foo"] [:empty-list]]) => [:pair "foo" :empty-list]
- (term-key [:pair [:symbol "foo"] [:pair [:var "x"] [:empty-list]]]) => [:pair "foo" :pair])
+ (term-key2 'foo) => ['foo]
+ (term-key2 ['foo 42]) => ['foo 42]
+ (term-key2 ['foo ()]) => ['foo ()]
+ (term-key2 ['foo [[ "x"] ()]]) => ['foo]
+ (term-key2 ['foo [['bar [["x"] ()]] [42 ()]]]) => ['foo 'bar])
 
 ;; `load-program` takes a collection of Muon statements, parses them, normalizes them and builds a database:
 ;; a [trie](trie.md) mapping `term-key`s to them.
@@ -114,11 +115,11 @@
  (let [program '[(nat z)
                  (muon/<- (nat (s :n))
                           (nat :n))]
-       db (load-program program)]
-   (-> db (trie/trie-get [:pair "nat" :pair "z" :empty-list]) count) => 1
-   (-> db (trie/trie-get [:pair "nat" :pair "z" :empty-list]) first (->> (map format-muon))) => '[(nat z) ()]
-   (-> db (trie/trie-get [:pair "nat" :pair :pair "s"]) count) => 1
-   (-> db (trie/trie-get [:pair "nat"]) count) => 2))
+       db (load-program2 program)]
+   (-> db (trie/trie-get ['nat 'z ()]) count) => 1
+   (-> db (trie/trie-get ['nat 'z ()]) first (->> (map format-muon2))) => '[(nat z) ()]
+   (-> db (trie/trie-get ['nat 's]) count) => 1
+   (-> db (trie/trie-get ['nat]) count) => 2))
 
 ;; ## Evaluation
 

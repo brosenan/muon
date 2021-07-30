@@ -172,10 +172,32 @@
                                 [:pair (subs-vars a bindings) (subs-vars b bindings)])
     :else term))
 
+(defn normalize-statement2 [statement]
+  (if-let [bindings (unify2 statement ['muon/<- [["head"] ["body"]]] {})]
+    [(bindings "head") (bindings "body")]
+    [statement ()]))
+
 (defn normalize-statement [statement]
   (if-let [bindings (unify statement [:pair [:symbol "muon/<-"] [:pair [:var "head"] [:var "body"]]] {})]
     [(bindings "head") (bindings "body")]
     [statement [:empty-list]]))
+
+(defn- term-key-with-stop [term]
+  (cond
+    (pair? term) (let [[a b] term]
+                   (if (variable? a)
+                     [:stop]
+                     (let [prefix (term-key-with-stop a)]
+                       (if (= (last prefix) :stop)
+                         prefix
+                         (concat prefix (term-key-with-stop b))))))
+    :else [term]))
+
+(defn term-key2 [term]
+  (let [key (term-key-with-stop term)]
+    (if (= (last key) :stop)
+      (take (dec (count key)) key)
+      key)))
 
 (defn term-key
   ([term]
@@ -195,6 +217,17 @@
                                          (conj :empty-list))
      (-> term first (= :var)) {:stop prefix}
      :else (conj prefix (second term)))))
+
+(defn load-program2 [program]
+  (loop [db nil
+         program program]
+    (if (empty? program)
+      db
+      (let [statement (first program)
+            statement (parse2 statement)
+            [head body] (normalize-statement2 statement)
+            key (term-key2 head)]
+        (recur (trie/trie-update db key [head body]) (rest program))))))
 
 (defn load-program [program]
   (loop [db nil
