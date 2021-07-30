@@ -158,60 +158,48 @@
 ;; It uses `match-rules` on the first goal in the first element in the sequence, then prepends the resulting goals of each option to the
 ;; remaining goals in the `goal-list` and prepends these results to the rest of the sequence.
 (fact
- (let [db (load-program '[(foo 1)
-                          (muon/<- (foo :x)
-                                   (bar :x :y)
-                                   (foo :y))])]
-   (eval-step [[[[:pair [:symbol "foo"] [:pair [:var "x"] [:empty-list]]]
-                 [:pair [:symbol "bar"] [:pair [:int 42] [:empty-list]]]] {}]
-               [[[:pair [:symbol "baz"] [:pair [:string "42"] [:empty-list]]]] {}]] db (atom 0)) =>
-   [[[[:pair [:symbol "bar"] [:pair [:int 42] [:empty-list]]]] {"x" [:int 1]}]
-    [[[:pair [:symbol "bar"] [:pair [:var 1] [:pair [:var 2] [:empty-list]]]]
-      [:pair [:symbol "foo"] [:pair [:var 2] [:empty-list]]]
-      [:pair [:symbol "bar"] [:pair [:int 42] [:empty-list]]]]
-     {1 [:var "x"]}]
-    [[[:pair [:symbol "baz"] [:pair [:string "42"] [:empty-list]]]] {}]]))
+ (let [db (load-program2 '[(foo 1)
+                           (muon/<- (foo :x)
+                                    (bar :x :y)
+                                    (foo :y))])]
+   (eval-step2 [[[['foo [["x"] ()]]
+                  ['bar [['muon/int 42] ()]]] {}]
+                [[['baz [['muon/string "42"] ()]]] {}]] db (atom 0)) =>
+   [[[['bar [['muon/int 42] ()]]] {"x" ['muon/int 1]}]
+    [[['bar [[1] [[2] ()]]]
+      ['foo [[2] ()]]
+      ['bar [['muon/int 42] ()]]]
+     {1 ["x"]}]
+    [[['baz [['muon/string "42"] ()]]] {}]]))
 
 
 
 ;; `eval-states` takes an evaluation state, a database and an allocator and returns a lazy sequence of all (`goal-list`, `bindings`)
 ;; pairs that are encountered during the evaluation.
 (fact
- (let [db (load-program '[(nat z)
-                          (muon/<- (nat (s :n))
-                                   (nat :n))])]
-   (eval-states [[[[:pair [:symbol "nat"] [:pair [:pair [:symbol "s"]
-                                                  [:pair [:pair [:symbol "s"]
-                                                          [:pair [:symbol "z"] [:empty-list]]]
-                                                   [:empty-list]]]
-                                           [:empty-list]]]] {}]] db (atom 0)) =>
-   [[[[:pair
-       [:symbol "nat"]
-       [:pair
-        [:pair
-         [:symbol "s"]
-         [:pair
-          [:pair [:symbol "s"] [:pair [:symbol "z"] [:empty-list]]]
-          [:empty-list]]]
-        [:empty-list]]]]
-     {}]
-    [[[:pair [:symbol "nat"] [:pair [:var 1] [:empty-list]]]]
-     {1 [:pair [:symbol "s"] [:pair [:symbol "z"] [:empty-list]]]}]
-    [[[:pair [:symbol "nat"] [:pair [:var 2] [:empty-list]]]]
-     {1 [:pair [:symbol "s"] [:pair [:symbol "z"] [:empty-list]]] 2 [:symbol "z"]}]
-    [[]
-     {1 [:pair [:symbol "s"] [:pair [:symbol "z"] [:empty-list]]] 2 [:symbol "z"]}]]))
+  (let [db (load-program2 '[(nat z)
+                           (muon/<- (nat (s :n))
+                                    (nat :n))])]
+    (eval-states2 [[[['nat [['s [['s ['z ()]] ()]] ()]]] {}]] db (atom 0)) =>
+    '[[[[nat [[s [[s [z ()]] ()]] ()]]]
+       {}]
+      [[[nat [[1] ()]]]
+       {1 [s [z ()]]}]
+      [[[nat [[2] ()]]]
+       {1 [s [z ()]] 2 z}]
+      [[]
+       {1 [s [z ()]] 2 z}]]))
 
 ;; Finally, `eval-goals` takes a goal list, a database and an allocator and returns a lazy sequence of bindings that satisfy all goals.
 (fact
- (let [db (load-program '[(concat () :b :b)
-                          (muon/<- (concat (:x :a muon/...) :b (:x :ab muon/...))
-                                   (concat :a :b :ab))])
-       goal (parse '(concat (1 2) (3) :x))]
-   (->> (eval-goals [goal] db (atom 0))
+ (let [db (load-program2 '[(concat () :b :b)
+                           (muon/<- (concat (:x :a muon/...) :b (:x :ab muon/...))
+                                    (concat :a :b :ab))])
+       goal (parse2 '(concat (1 2) (3) :x))]
+   (->> (eval-goals2 [goal] db (atom 0))
         first
-        (subs-vars [:var "x"])
-        format-muon) => '(1 2 3)))
+        (subs-vars2 ["x"])
+        format-muon2) => '(1 2 3)))
 
 ;; ## Implementation Details
 (fact

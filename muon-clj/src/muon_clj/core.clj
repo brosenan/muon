@@ -268,6 +268,13 @@
        (filter (fn [[_body bindings]] (not (nil? bindings))))
        (map (fn [[goals bindings]] [(ast-list-to-seq goals) bindings]))))
 
+(defn eval-step2 [options db alloc]
+  (let [[goal-list bindings] (first options)
+        goal (first goal-list)]
+    (concat (->> (match-rules2 goal bindings db alloc)
+                 (map (fn [[goal-list1 bindings]] [(concat goal-list1 (rest goal-list)) bindings])))
+            (rest options))))
+
 (defn eval-step [options db alloc]
   (let [[goal-list bindings] (first options)
         goal (first goal-list)]
@@ -275,10 +282,20 @@
                  (map (fn [[goal-list1 bindings]] [(concat goal-list1 (rest goal-list)) bindings])))
             (rest options))))
 
+(defn eval-states2 [options db alloc]
+  (if (empty? options) nil
+      (lazy-seq (cons (first options)
+                      (eval-states2 (eval-step2 options db alloc) db alloc)))))
+
 (defn eval-states [options db alloc]
   (if (empty? options) nil
       (lazy-seq (cons (first options)
                       (eval-states (eval-step options db alloc) db alloc)))))
+
+(defn eval-goals2 [goals db alloc]
+  (->> (eval-states2 [[goals {}]] db alloc)
+       (filter (fn [[goals _bindings]] (empty? goals)))
+       (map second)))
 
 (defn eval-goals [goals db alloc]
   (->> (eval-states [[goals {}]] db alloc)
