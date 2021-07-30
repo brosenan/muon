@@ -155,6 +155,15 @@
                              nil)
     (= a b) bindings))
 
+(defn subs-vars2 [term bindings]
+  (cond
+    (variable? term) (if-let [val (bindings (first term))]
+                       (recur val bindings)
+                       term)
+    (pair? term) (let [[a b] term]
+                   [(subs-vars2 a bindings) (subs-vars2 b bindings)])
+    :else term))
+
 (defn subs-vars [term bindings]
   (cond
     (and (-> term first (= :var))

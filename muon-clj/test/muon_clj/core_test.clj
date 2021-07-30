@@ -76,13 +76,12 @@
 
 ;; Given a term (as AST) and a bindings map, `subs-vars` returns the given term after substituting all bound variables with their assigned values.
 (fact
- (subs-vars [:var "x"] {}) => [:var "x"]
- (subs-vars [:var "x"] {"x" [:int 42]}) => [:int 42]
- (subs-vars [:pair [:var "x"] [:pair [:string "foo"] [:var "y"]]] {"x" [:int 42]
-                                                                   "y" [:empty-list]}) =>
- [:pair [:int 42] [:pair [:string "foo"] [:empty-list]]]
- (subs-vars [:var "x"] {"x" [:var "y"]
-                        "y" [:int 42]}) => [:int 42])
+ (subs-vars2 ["x"] {}) => ["x"]
+ (subs-vars2 ["x"] {"x" 42}) => 42
+ (subs-vars2 [["x"] ["foo" ["y"]]] {"x" 42
+                                    "y" ()}) => [42 ["foo" ()]]
+ (subs-vars2 ["x"] {"x" ["y"]
+                    "y" 42}) => 42)
 
 ;; ## Program Handling
 
