@@ -2,6 +2,20 @@
   (:gen-class)
   (:require [muon-clj.trie :as trie]))
 
+(defn parse2 [expr]
+  (cond
+    (nil? expr) ()
+    (int? expr) ['muon/int expr]
+    (float? expr) ['muon/float expr]
+    (string? expr) ['muon/string expr]
+    (keyword? expr) [(name expr)]
+    (and (sequential? expr)
+         (seq expr)) (if (and (= (count expr) 3)
+                              (= (nth expr 2) 'muon/...))
+                       [(parse2 (first expr)) (parse2 (second expr))]
+                       [(parse2 (first expr)) (parse2 (rest expr))])
+    :else expr))
+
 (defn parse [expr]
   (cond
     (nil? expr) [:empty-list]
@@ -22,6 +36,32 @@
                   (empty? expr) [:empty-list]
                   :else [:pair (-> expr first parse) (-> expr rest parse)])
     :else (throw (Exception. (str "Invalid Muon expression " expr)))))
+
+(defn format-muon2 [ast]
+  (if (vector? ast)
+    (cond
+      (= (count ast) 2) (let [tag (first ast)]
+                          (cond
+                            (or
+                             (and (= tag 'muon/int)
+                                  (int? (second ast)))
+                             (and (= tag 'muon/float)
+                                  (float? (second ast)))
+                             (and (= tag 'muon/string)
+                                  (string? (second ast)))) (second ast)
+                            :else (let [head (format-muon2 (first ast))
+                                        tail (format-muon2 (second ast))]
+                                    (cond
+                                      (seq? tail) (conj tail head)
+                                      (vector? tail) (vec (concat [head] tail))
+                                      :else (list head tail 'muon/...)))))
+      (= (count ast) 1) (let [var (first ast)
+                              name (if (int? var)
+                                     (str "#" var)
+                                     var)]
+                          (keyword name))
+      :else ast)
+    ast))
 
 (defn format-muon [ast]
   (cond
