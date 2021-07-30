@@ -6,38 +6,45 @@
 ;; ## Term Handling
 
 ;; `parse` translates a Muon s-expression into an AST.
+;; By default, an AST element representing some expression `expr` is `expr` itself.
+;; Non empty lists and vectors are represented as _pairs_, consisting of a 2-vector
+;; with the ASTs of the first element and the rest of the list/vector as its values.
+;; Variables (keywords) are represented as 1-vectors, with the name of the variable as the sole element.
+;; Integers, floating point numbers and strings are _tagged_ by placing them in a pair with a symbol representing their type.
 (fact
- (parse nil) => [:empty-list]
- (parse 1) => [:int 1]
- (parse 3.14) => [:float 3.14]
- (parse "foo") => [:string "foo"]
- (parse 'bar) => [:symbol "bar"]
- (parse :baz) => [:var "baz"]
- (parse true) => [:symbol "true"]
- (parse false) => [:symbol "false"]
- (parse '()) => [:empty-list]
- (parse '(1 2)) => [:pair [:int 1] [:pair [:int 2] [:empty-list]]]
- (parse '(:x :xs muon/...)) => [:pair [:var "x"] [:var "xs"]]
- (parse []) => [:empty-vec]
- (parse ['a 'b]) => [:pair [:symbol "a"] [:pair [:symbol "b"] [:empty-vec]]]
- (parse '[:x :xs muon/...]) => [:pair [:var "x"] [:var "xs"]]
- (parse {}) => (throws Exception "Invalid Muon expression {}"))
+ (parse2 nil) => ()
+ (parse2 1) => '[muon/int 1]
+ (parse2 3.14) => '[muon/float 3.14]
+ (parse2 "foo") => '[muon/string "foo"]
+ (parse2 'bar) => 'bar
+ (parse2 :baz) => ["baz"]
+ (parse2 true) => true
+ (parse2 false) => false
+ (parse2 '()) => ()
+ (parse2 '(1 2)) => '[[muon/int 1] [[muon/int 2] ()]]
+ (parse2 '(:x :xs muon/...)) => [["x"] ["xs"]]
+ (parse2 []) => []
+ (parse2 ['a 'b]) => '[a [b []]]
+ (parse2 '[:x :xs muon/...]) => [["x"] ["xs"]])
 
 ;; `format-muon` formats an AST into a Muon s-expression.
 (fact
- (format-muon [:int 1]) => 1
- (format-muon [:float 3.14]) => 3.14
- (format-muon [:string "foo"]) => "foo"
- (format-muon [:symbol "bar"]) => 'bar
- (format-muon [:var "baz"]) => :baz
- (format-muon [:var 42]) => :#42  ;; Numeric vars are prefixed with a #.
- (format-muon [:empty-list]) => '()
- (format-muon [:pair [:int 1] [:pair [:int 2] [:empty-list]]]) => '(1 2)
- (format-muon [:pair [:var "x"] [:var "xs"]]) => '(:x :xs muon/...)
- (format-muon [:empty-vec]) => []
- (format-muon [:pair [:symbol "a"] [:pair [:symbol "b"] [:empty-vec]]]) => ['a 'b])
+ (format-muon2 'foo) => 'foo
+ (format-muon2 ['muon/int 1]) => 1
+ (format-muon2 ['muon/int ["n"]]) => '(muon/int :n muon/...)
+ (format-muon2 ['muon/float 3.14]) => 3.14
+ (format-muon2 ['muon/float ["f"]]) => '(muon/float :f muon/...)
+ (format-muon2 ['muon/string "foo"]) => "foo"
+ (format-muon2 ['muon/string ["s"]]) => '(muon/string :s muon/...)
+ (format-muon2 ["baz"]) => :baz
+ (format-muon2 [42]) => :#42  ;; Numeric vars are prefixed with a #.
+ (format-muon2 ()) => ()
+ (format-muon2 [['muon/int 1] [['muon/int 2] ()]]) => '(1 2)
+ (format-muon2 [["x"] ["xs"]]) => '(:x :xs muon/...)
+ (format-muon2 []) => []
+ (format-muon2 ['a ['b []]]) => ['a 'b])
 
-;; `alloc-vars` takes a Muon AST and an integer `atom`, and allocates integers in place of the string `:var` nodes.
+;; `alloc-vars` takes a Muon AST and an integer `atom`, and allocates integers in place of the string variable nodes.
 ;; It does so consistently, such that the same string will be mapped to the same number.
 ;; The returned AST has numeric `:vars` but is otherwise identical to the original AST.
 (fact
