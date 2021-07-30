@@ -80,6 +80,22 @@
                                  :else (list head tail 'muon/...)))
     :else (second ast)))
 
+(defn alloc-vars2
+  ([ast alloc]
+   (-> (alloc-vars2 ast alloc {}) first))
+  ([ast alloc varmap]
+   (if (vector? ast)
+     (cond
+       (= (count ast) 2) (let [[head varmap] (alloc-vars2 (first ast) alloc varmap)
+                               [tail varmap] (alloc-vars2 (second ast) alloc varmap)]
+                           [[head tail] varmap])
+       (= (count ast) 1) (if (varmap (first ast))
+                           [[(varmap (first ast))] varmap]
+                           (let [new-var (swap! alloc inc)]
+                             [[new-var] (assoc varmap (first ast) new-var)]))
+       :else [ast varmap])
+     [ast varmap])))
+
 (defn alloc-vars
   ([ast alloc]
    (-> (alloc-vars ast alloc {}) first))

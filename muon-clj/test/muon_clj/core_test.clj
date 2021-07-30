@@ -46,14 +46,14 @@
 
 ;; `alloc-vars` takes a Muon AST and an integer `atom`, and allocates integers in place of the string variable nodes.
 ;; It does so consistently, such that the same string will be mapped to the same number.
-;; The returned AST has numeric `:vars` but is otherwise identical to the original AST.
+;; The returned AST has numeric vars but is otherwise identical to the original AST.
 (fact
- (alloc-vars [:empty-list] (atom 0)) => [:empty-list]
- (alloc-vars [:var "a"] (atom 0)) => [:var 1]
- (alloc-vars [:pair [:var "a"] [:var "b"]] (atom 0)) => [:pair [:var 1] [:var 2]]
- (alloc-vars [:pair [:var "a"] [:var "a"]] (atom 0)) => [:pair [:var 1] [:var 1]]
- (alloc-vars [:pair [:var "a"] [:pair [:int 42] [:pair [:var "a"] [:empty-list]]]] (atom 0)) =>
- [:pair [:var 1] [:pair [:int 42] [:pair [:var 1] [:empty-list]]]])
+ (alloc-vars2 () (atom 0)) => ()
+ (alloc-vars2 [] (atom 0)) => []
+ (alloc-vars2 ["a"] (atom 0)) => [1]
+ (alloc-vars2 [["a"] ["b"]] (atom 0)) => [[1] [2]]
+ (alloc-vars2 [["a"] ["a"]] (atom 0)) => [[1] [1]]
+ (alloc-vars2 [["a"] [['muon/int 42] [["a"] ()]]] (atom 0)) => [[1] [['muon/int 42] [[1] ()]]])
 
 ;; [Term unification](https://en.wikipedia.org/wiki/Unification_(computer_science)) is an operation that looks for a set of variable bindings that,
 ;; if assigned, make two logic terms that contain these variables identical.
