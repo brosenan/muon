@@ -106,7 +106,7 @@
  (term-key2 'foo) => ['foo]
  (term-key2 ['foo 42]) => ['foo 42]
  (term-key2 ['foo ()]) => ['foo ()]
- (term-key2 ['foo [[ "x"] ()]]) => ['foo]
+ (term-key2 ['foo [["x"] ()]]) => ['foo]
  (term-key2 ['foo [['bar [["x"] ()]] [42 ()]]]) => ['foo 'bar])
 
 ;; `load-program` takes a collection of Muon statements, parses them, normalizes them and builds a database:
@@ -137,23 +137,21 @@
 ;; As a first step, `match-rules` takes a goal (term AST), a bindings map, a database map and an integer `atom` for allocating fresh variables.
 ;; It returns a sequence (`goal-list`, `bindings`) pairs, one for each successful match.
 (fact
- (let [db (load-program '[(foo 1)
-                          (muon/<- (foo :x)
-                                   (bar :x :y)
-                                   (foo :y))])]
-   (match-rules (parse '(bar 1 2)) {}, db, (atom 0)) => []
-   (match-rules (parse '(foo :x)) {}, db, (atom 0)) => [[[] {"x" [:int 1]}]
-                                                        [[[:pair [:symbol "bar"] [:pair [:var 1] [:pair [:var 2] [:empty-list]]]]
-                                                          [:pair [:symbol "foo"] [:pair [:var 2] [:empty-list]]]]
-                                                         {1 [:var "x"]}]]
-   (match-rules (parse '(foo 2)) {}, db, (atom 0)) => [[[[:pair [:symbol "bar"] [:pair [:var 1] [:pair [:var 2] [:empty-list]]]]
-                                                         [:pair [:symbol "foo"] [:pair [:var 2] [:empty-list]]]]
-                                                        {1 [:int 2]}]]
-   (match-rules (parse '(foo baz)) {}, db, (atom 0)) => [[[[:pair [:symbol "bar"] [:pair [:var 1] [:pair [:var 2] [:empty-list]]]]
-                                                           [:pair [:symbol "foo"] [:pair [:var 2] [:empty-list]]]]
-                                                          {1 [:symbol "baz"]}]]))
-
-
+ (let [db (load-program2 '[(foo 1)
+                           (muon/<- (foo :x)
+                                    (bar :x :y)
+                                    (foo :y))])]
+   (match-rules2 (parse2 '(bar 1 2)) {}, db, (atom 0)) => []
+   (match-rules2 (parse2 '(foo :x)) {}, db, (atom 0)) => [[[] {"x" ['muon/int 1]}]
+                                                          [[['bar [[1] [[2] ()]]]
+                                                            ['foo [[2] ()]]]
+                                                           {1 ["x"]}]]
+   (match-rules2 (parse2 '(foo 2)) {}, db, (atom 0)) => [[[['bar [[1] [[2] ()]]]
+                                                           ['foo [[2] ()]]]
+                                                          {1 ['muon/int 2]}]]
+   (match-rules2 (parse2 '(foo baz)) {}, db, (atom 0)) => [[[['bar [[1] [[2] ()]]]
+                                                             ['foo [[2] ()]]]
+                                                            {1 'baz}]]))
 
 ;; `eval-step` takes an evaluation state (a non-empty sequence of (`goal-list`, `bindings`) pairs), a database and an allocator and
 ;; evolves the state by one step.
@@ -217,5 +215,5 @@
 
 ;; ## Implementation Details
 (fact
- (ast-list-to-seq [:pair [:int 1] [:pair [:int 2] [:empty-list]]]) => [[:int 1] [:int 2]])
+ (ast-list-to-seq2 [1 [2 ()]]) => [1 2])
 

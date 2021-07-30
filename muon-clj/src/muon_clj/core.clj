@@ -184,13 +184,12 @@
 
 (defn- term-key-with-stop [term]
   (cond
-    (pair? term) (let [[a b] term]
-                   (if (variable? a)
-                     [:stop]
-                     (let [prefix (term-key-with-stop a)]
-                       (if (= (last prefix) :stop)
-                         prefix
-                         (concat prefix (term-key-with-stop b))))))
+    (variable? term) [:stop]
+    (pair? term) (let [[a b] term
+                       prefix (term-key-with-stop a)]
+                   (if (= (last prefix) :stop)
+                     prefix
+                     (concat prefix (term-key-with-stop b))))
     :else [term]))
 
 (defn term-key2 [term]
@@ -244,6 +243,21 @@
   (cond
     (-> ast-list first (= :empty-list)) []
     (-> ast-list first (= :pair)) (concat [(-> ast-list (nth 1))] (-> ast-list (nth 2) ast-list-to-seq))))
+
+(defn ast-list-to-seq2 [ast-list]
+  (cond
+    (empty? ast-list) []
+    (pair? ast-list) (let [[a b] ast-list]
+                       (concat [a] (ast-list-to-seq2 b)))) )
+
+(defn match-rules2 [goal bindings db alloc]
+  (->> (subs-vars2 goal bindings)
+       term-key2
+       (trie/trie-get db)
+       (map (fn [[head body]] (alloc-vars2 [head body] alloc)))
+       (map (fn [[head body]] [body (unify2 head goal bindings)]))
+       (filter (fn [[_body bindings]] (not (nil? bindings))))
+       (map (fn [[goals bindings]] [(ast-list-to-seq2 goals) bindings]))))
 
 (defn match-rules [goal bindings db alloc]
   (->> (subs-vars goal bindings)
