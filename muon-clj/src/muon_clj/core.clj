@@ -113,6 +113,32 @@
                                 [[:pair a b] varmap])
      :else [ast varmap])))
 
+(defn- variable? [ast]
+  (and (vector? ast)
+       (= (count ast) 1)))
+
+(defn- pair? [ast]
+  (and (vector? ast)
+       (= (count ast) 2)))
+
+(defn unify2 [a b bindings]
+  (cond
+    (nil? bindings) nil
+    (variable? a) (if-let [a-val (bindings (first a))]
+                    (recur a-val b bindings)
+                    (assoc bindings (first a) b))
+    (variable? b) (if-let [b-val (bindings (first b))]
+                    (recur a b-val bindings)
+                    (assoc bindings (first b) a))
+    (pair? a) (if (pair? b)
+                (let [[a-head a-tail] a
+                      [b-head b-tail] b]
+                  (->> bindings
+                       (unify2 a-head b-head)
+                       (unify2 a-tail b-tail)))
+                nil)
+    (= a b) bindings))
+
 (defn unify [a b bindings]
   (cond
     (nil? bindings) nil

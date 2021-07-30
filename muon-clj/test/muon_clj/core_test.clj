@@ -61,18 +61,18 @@
 ;; `unify` takes a pair of terms and a (possibly empty) map of variable bindings and returns either `nil`,
 ;; if the terms cannot be unified, or, if they can be unified, it returns the map of variable assignments that satisfies the unification.
 (fact
- (unify [:int 1] [:int 2] {}) => nil
- (unify [:int 1] [:int 1] {"a" [:int 3]}) => {"a" [:int 3]}
- (unify [:var "foo"] [:int 1] {}) => {"foo" [:int 1]}
- (unify [:var "foo"] [:int 1] {"foo" [:int 2]}) => nil
- (unify [:var "foo"] [:int 1] {"foo" [:int 1]}) => {"foo" [:int 1]}
- (unify [:int 1] [:var "foo"] {}) => {"foo" [:int 1]}
- (unify [:int 1] [:var "foo"] {"foo" [:int 2]}) => nil
- (unify [:int 1] [:var "foo"] {"foo" [:int 1]}) => {"foo" [:int 1]}
- (unify [:pair [:var "x"] [:int 2]] [:pair [:int 1] [:var "y"]] {}) => {"x" [:int 1] "y" [:int 2]}
- (unify [:pair [:var "x"] [:int 2]] [:pair [:int 1] [:var "x"]] {}) => nil
- (unify [:pair [:int 2] [:int 3]] [:pair [:int 1] [:var "x"]] {}) => nil
- (unify [:pair [:var "x"] [:int 2]] [:not-a-pair [:int 1] [:var "y"]] {}) => nil)
+ (unify2 1 2 {}) => nil
+ (unify2 1 1 {"a" 3}) => {"a" 3}
+ (unify2 ["foo"] 1 {}) => {"foo" 1}
+ (unify2 ["foo"] 1 {"foo" 2}) => nil
+ (unify2 ["foo"] 1 {"foo" 1}) => {"foo" 1}
+ (unify2 1 ["foo"] {}) => {"foo" 1}
+ (unify2 1 ["foo"] {"foo" 2}) => nil
+ (unify2 1 ["foo"] {"foo" 1}) => {"foo" 1}
+ (unify2 [["x"] 2] [1 ["y"]] {}) => {"x" 1 "y" 2}
+ (unify2 [["x"] 2] [1 ["x"]] {}) => nil
+ (unify2 [2 3] [1 ["x"]] {}) => nil
+ (unify2 [["x"] 2] 3 {}) => nil)
 
 ;; Given a term (as AST) and a bindings map, `subs-vars` returns the given term after substituting all bound variables with their assigned values.
 (fact
