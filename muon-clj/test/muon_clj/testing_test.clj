@@ -24,14 +24,14 @@
              (muon/test foo-should-succeed-thrice (foo 3) 3)
              (foo 3)
              (bar 7)])]
-   (set (get-tests db)) => #{{:id "foo-should-fail"
-                              :goal [:pair [:symbol "foo"] [:pair [:int 1] [:empty-list]]]
+   (set (get-tests db)) => #{{:id 'foo-should-fail
+                              :goal ['foo [['muon/int 1] ()]]
                               :num-results 0}
-                             {:id "bar-should-succeed-once"
-                              :goal [:pair [:symbol "bar"] [:pair [:int 2] [:empty-list]]]
+                             {:id 'bar-should-succeed-once
+                              :goal ['bar [['muon/int 2] ()]]
                               :num-results 1}
-                             {:id "foo-should-succeed-thrice"
-                              :goal [:pair [:symbol "foo"] [:pair [:int 3] [:empty-list]]]
+                             {:id 'foo-should-succeed-thrice
+                              :goal ['foo [['muon/int 3] ()]]
                               :num-results 3}}))
 
 ;; `run-test` takes a database and a map describing a single test, executes the test and returns a map containing the following:
@@ -45,7 +45,7 @@
              (foo 2)
              (foo 3)])]
    (run-test db {:id "foo-should-succeed-thrice"
-                 :goal [:pair [:symbol "foo"] [:pair [:var 1] [:empty-list]]]
+                 :goal ['foo [[1] ()]]
                  :num-results 3}) => {:id "foo-should-succeed-thrice"
                                       :expected-num-results 3
                                       :results #{'(foo 1)
@@ -53,7 +53,7 @@
                                                  '(foo 3)}
                                       :success true}
    (run-test db {:id "foo-should-succeed-thrice"
-                 :goal [:pair [:symbol "foo"] [:pair [:int 1] [:empty-list]]]
+                 :goal ['foo [['muon/int 1] ()]]
                  :num-results 3}) => {:id "foo-should-succeed-thrice"
                                       :expected-num-results 3
                                       :results #{'(foo 1)}

@@ -12,48 +12,48 @@
 ;; Variables (keywords) are represented as 1-vectors, with the name of the variable as the sole element.
 ;; Integers, floating point numbers and strings are _tagged_ by placing them in a pair with a symbol representing their type.
 (fact
- (parse2 nil) => ()
- (parse2 1) => '[muon/int 1]
- (parse2 3.14) => '[muon/float 3.14]
- (parse2 "foo") => '[muon/string "foo"]
- (parse2 'bar) => 'bar
- (parse2 :baz) => ["baz"]
- (parse2 true) => true
- (parse2 false) => false
- (parse2 '()) => ()
- (parse2 '(1 2)) => '[[muon/int 1] [[muon/int 2] ()]]
- (parse2 '(:x :xs muon/...)) => [["x"] ["xs"]]
- (parse2 []) => []
- (parse2 ['a 'b]) => '[a [b []]]
- (parse2 '[:x :xs muon/...]) => [["x"] ["xs"]])
+ (parse nil) => ()
+ (parse 1) => '[muon/int 1]
+ (parse 3.14) => '[muon/float 3.14]
+ (parse "foo") => '[muon/string "foo"]
+ (parse 'bar) => 'bar
+ (parse :baz) => ["baz"]
+ (parse true) => true
+ (parse false) => false
+ (parse '()) => ()
+ (parse '(1 2)) => '[[muon/int 1] [[muon/int 2] ()]]
+ (parse '(:x :xs muon/...)) => [["x"] ["xs"]]
+ (parse []) => []
+ (parse ['a 'b]) => '[a [b []]]
+ (parse '[:x :xs muon/...]) => [["x"] ["xs"]])
 
 ;; `format-muon` formats an AST into a Muon s-expression.
 (fact
- (format-muon2 'foo) => 'foo
- (format-muon2 ['muon/int 1]) => 1
- (format-muon2 ['muon/int ["n"]]) => '(muon/int :n muon/...)
- (format-muon2 ['muon/float 3.14]) => 3.14
- (format-muon2 ['muon/float ["f"]]) => '(muon/float :f muon/...)
- (format-muon2 ['muon/string "foo"]) => "foo"
- (format-muon2 ['muon/string ["s"]]) => '(muon/string :s muon/...)
- (format-muon2 ["baz"]) => :baz
- (format-muon2 [42]) => :#42  ;; Numeric vars are prefixed with a #.
- (format-muon2 ()) => ()
- (format-muon2 [['muon/int 1] [['muon/int 2] ()]]) => '(1 2)
- (format-muon2 [["x"] ["xs"]]) => '(:x :xs muon/...)
- (format-muon2 []) => []
- (format-muon2 ['a ['b []]]) => ['a 'b])
+ (format-muon 'foo) => 'foo
+ (format-muon ['muon/int 1]) => 1
+ (format-muon ['muon/int ["n"]]) => '(muon/int :n muon/...)
+ (format-muon ['muon/float 3.14]) => 3.14
+ (format-muon ['muon/float ["f"]]) => '(muon/float :f muon/...)
+ (format-muon ['muon/string "foo"]) => "foo"
+ (format-muon ['muon/string ["s"]]) => '(muon/string :s muon/...)
+ (format-muon ["baz"]) => :baz
+ (format-muon [42]) => :#42  ;; Numeric vars are prefixed with a #.
+ (format-muon ()) => ()
+ (format-muon [['muon/int 1] [['muon/int 2] ()]]) => '(1 2)
+ (format-muon [["x"] ["xs"]]) => '(:x :xs muon/...)
+ (format-muon []) => []
+ (format-muon ['a ['b []]]) => ['a 'b])
 
 ;; `alloc-vars` takes a Muon AST and an integer `atom`, and allocates integers in place of the string variable nodes.
 ;; It does so consistently, such that the same string will be mapped to the same number.
 ;; The returned AST has numeric vars but is otherwise identical to the original AST.
 (fact
- (alloc-vars2 () (atom 0)) => ()
- (alloc-vars2 [] (atom 0)) => []
- (alloc-vars2 ["a"] (atom 0)) => [1]
- (alloc-vars2 [["a"] ["b"]] (atom 0)) => [[1] [2]]
- (alloc-vars2 [["a"] ["a"]] (atom 0)) => [[1] [1]]
- (alloc-vars2 [["a"] [['muon/int 42] [["a"] ()]]] (atom 0)) => [[1] [['muon/int 42] [[1] ()]]])
+ (alloc-vars () (atom 0)) => ()
+ (alloc-vars [] (atom 0)) => []
+ (alloc-vars ["a"] (atom 0)) => [1]
+ (alloc-vars [["a"] ["b"]] (atom 0)) => [[1] [2]]
+ (alloc-vars [["a"] ["a"]] (atom 0)) => [[1] [1]]
+ (alloc-vars [["a"] [['muon/int 42] [["a"] ()]]] (atom 0)) => [[1] [['muon/int 42] [[1] ()]]])
 
 ;; [Term unification](https://en.wikipedia.org/wiki/Unification_(computer_science)) is an operation that looks for a set of variable bindings that,
 ;; if assigned, make two logic terms that contain these variables identical.
@@ -61,26 +61,26 @@
 ;; `unify` takes a pair of terms and a (possibly empty) map of variable bindings and returns either `nil`,
 ;; if the terms cannot be unified, or, if they can be unified, it returns the map of variable assignments that satisfies the unification.
 (fact
- (unify2 1 2 {}) => nil
- (unify2 1 1 {"a" 3}) => {"a" 3}
- (unify2 ["foo"] 1 {}) => {"foo" 1}
- (unify2 ["foo"] 1 {"foo" 2}) => nil
- (unify2 ["foo"] 1 {"foo" 1}) => {"foo" 1}
- (unify2 1 ["foo"] {}) => {"foo" 1}
- (unify2 1 ["foo"] {"foo" 2}) => nil
- (unify2 1 ["foo"] {"foo" 1}) => {"foo" 1}
- (unify2 [["x"] 2] [1 ["y"]] {}) => {"x" 1 "y" 2}
- (unify2 [["x"] 2] [1 ["x"]] {}) => nil
- (unify2 [2 3] [1 ["x"]] {}) => nil
- (unify2 [["x"] 2] 3 {}) => nil)
+ (unify 1 2 {}) => nil
+ (unify 1 1 {"a" 3}) => {"a" 3}
+ (unify ["foo"] 1 {}) => {"foo" 1}
+ (unify ["foo"] 1 {"foo" 2}) => nil
+ (unify ["foo"] 1 {"foo" 1}) => {"foo" 1}
+ (unify 1 ["foo"] {}) => {"foo" 1}
+ (unify 1 ["foo"] {"foo" 2}) => nil
+ (unify 1 ["foo"] {"foo" 1}) => {"foo" 1}
+ (unify [["x"] 2] [1 ["y"]] {}) => {"x" 1 "y" 2}
+ (unify [["x"] 2] [1 ["x"]] {}) => nil
+ (unify [2 3] [1 ["x"]] {}) => nil
+ (unify [["x"] 2] 3 {}) => nil)
 
 ;; Given a term (as AST) and a bindings map, `subs-vars` returns the given term after substituting all bound variables with their assigned values.
 (fact
- (subs-vars2 ["x"] {}) => ["x"]
- (subs-vars2 ["x"] {"x" 42}) => 42
- (subs-vars2 [["x"] ["foo" ["y"]]] {"x" 42
+ (subs-vars ["x"] {}) => ["x"]
+ (subs-vars ["x"] {"x" 42}) => 42
+ (subs-vars [["x"] ["foo" ["y"]]] {"x" 42
                                     "y" ()}) => [42 ["foo" ()]]
- (subs-vars2 ["x"] {"x" ["y"]
+ (subs-vars ["x"] {"x" ["y"]
                     "y" 42}) => 42)
 
 ;; ## Program Handling
@@ -93,21 +93,21 @@
 ;; `[:head :body]` such that for a rule `(muon/<- :head :body ...)` `:head` and `:body` are taken verbatim, and for a fact `:fact`, `:head`
 ;; is taken as `:fact` and `:body` is taken as `()`.
 (fact
- (map format-muon2
+ (map format-muon
       (-> '(muon/<- (foo :bar)
-                    (bar :foo)) parse2 normalize-statement2)) => ['(foo :bar) ['(bar :foo)]]
- (map format-muon2
-      (-> '(foo :bar) parse2 normalize-statement2)) => ['(foo :bar) []])
+                    (bar :foo)) parse normalize-statement)) => ['(foo :bar) ['(bar :foo)]]
+ (map format-muon
+      (-> '(foo :bar) parse normalize-statement)) => ['(foo :bar) []])
 
 ;; Normalized rules are stored in a database formed as a [trie](trie.md).
 ;; The keys in this trie are serializations of ASTs, which are trimmed at the first variable.
 ;; The function `term-key` takes an AST of a term and returns a sequence of tokens acting as its database key:
 (fact
- (term-key2 'foo) => ['foo]
- (term-key2 ['foo 42]) => ['foo 42]
- (term-key2 ['foo ()]) => ['foo ()]
- (term-key2 ['foo [["x"] ()]]) => ['foo]
- (term-key2 ['foo [['bar [["x"] ()]] [42 ()]]]) => ['foo 'bar])
+ (term-key 'foo) => ['foo]
+ (term-key ['foo 42]) => ['foo 42]
+ (term-key ['foo ()]) => ['foo ()]
+ (term-key ['foo [["x"] ()]]) => ['foo]
+ (term-key ['foo [['bar [["x"] ()]] [42 ()]]]) => ['foo 'bar])
 
 ;; `load-program` takes a collection of Muon statements, parses them, normalizes them and builds a database:
 ;; a [trie](trie.md) mapping `term-key`s to them.
@@ -115,9 +115,9 @@
  (let [program '[(nat z)
                  (muon/<- (nat (s :n))
                           (nat :n))]
-       db (load-program2 program)]
+       db (load-program program)]
    (-> db (trie/trie-get ['nat 'z ()]) count) => 1
-   (-> db (trie/trie-get ['nat 'z ()]) first (->> (map format-muon2))) => '[(nat z) ()]
+   (-> db (trie/trie-get ['nat 'z ()]) first (->> (map format-muon))) => '[(nat z) ()]
    (-> db (trie/trie-get ['nat 's]) count) => 1
    (-> db (trie/trie-get ['nat]) count) => 2))
 
@@ -137,19 +137,19 @@
 ;; As a first step, `match-rules` takes a goal (term AST), a bindings map, a database map and an integer `atom` for allocating fresh variables.
 ;; It returns a sequence (`goal-list`, `bindings`) pairs, one for each successful match.
 (fact
- (let [db (load-program2 '[(foo 1)
+ (let [db (load-program '[(foo 1)
                            (muon/<- (foo :x)
                                     (bar :x :y)
                                     (foo :y))])]
-   (match-rules2 (parse2 '(bar 1 2)) {}, db, (atom 0)) => []
-   (match-rules2 (parse2 '(foo :x)) {}, db, (atom 0)) => [[[] {"x" ['muon/int 1]}]
+   (match-rules (parse '(bar 1 2)) {}, db, (atom 0)) => []
+   (match-rules (parse '(foo :x)) {}, db, (atom 0)) => [[[] {"x" ['muon/int 1]}]
                                                           [[['bar [[1] [[2] ()]]]
                                                             ['foo [[2] ()]]]
                                                            {1 ["x"]}]]
-   (match-rules2 (parse2 '(foo 2)) {}, db, (atom 0)) => [[[['bar [[1] [[2] ()]]]
+   (match-rules (parse '(foo 2)) {}, db, (atom 0)) => [[[['bar [[1] [[2] ()]]]
                                                            ['foo [[2] ()]]]
                                                           {1 ['muon/int 2]}]]
-   (match-rules2 (parse2 '(foo baz)) {}, db, (atom 0)) => [[[['bar [[1] [[2] ()]]]
+   (match-rules (parse '(foo baz)) {}, db, (atom 0)) => [[[['bar [[1] [[2] ()]]]
                                                              ['foo [[2] ()]]]
                                                             {1 'baz}]]))
 
@@ -158,11 +158,11 @@
 ;; It uses `match-rules` on the first goal in the first element in the sequence, then prepends the resulting goals of each option to the
 ;; remaining goals in the `goal-list` and prepends these results to the rest of the sequence.
 (fact
- (let [db (load-program2 '[(foo 1)
+ (let [db (load-program '[(foo 1)
                            (muon/<- (foo :x)
                                     (bar :x :y)
                                     (foo :y))])]
-   (eval-step2 [[[['foo [["x"] ()]]
+   (eval-step [[[['foo [["x"] ()]]
                   ['bar [['muon/int 42] ()]]] {}]
                 [[['baz [['muon/string "42"] ()]]] {}]] db (atom 0)) =>
    [[[['bar [['muon/int 42] ()]]] {"x" ['muon/int 1]}]
@@ -177,10 +177,10 @@
 ;; `eval-states` takes an evaluation state, a database and an allocator and returns a lazy sequence of all (`goal-list`, `bindings`)
 ;; pairs that are encountered during the evaluation.
 (fact
-  (let [db (load-program2 '[(nat z)
+  (let [db (load-program '[(nat z)
                            (muon/<- (nat (s :n))
                                     (nat :n))])]
-    (eval-states2 [[[['nat [['s [['s ['z ()]] ()]] ()]]] {}]] db (atom 0)) =>
+    (eval-states [[[['nat [['s [['s ['z ()]] ()]] ()]]] {}]] db (atom 0)) =>
     '[[[[nat [[s [[s [z ()]] ()]] ()]]]
        {}]
       [[[nat [[1] ()]]]
@@ -192,16 +192,16 @@
 
 ;; Finally, `eval-goals` takes a goal list, a database and an allocator and returns a lazy sequence of bindings that satisfy all goals.
 (fact
- (let [db (load-program2 '[(concat () :b :b)
+ (let [db (load-program '[(concat () :b :b)
                            (muon/<- (concat (:x :a muon/...) :b (:x :ab muon/...))
                                     (concat :a :b :ab))])
-       goal (parse2 '(concat (1 2) (3) :x))]
-   (->> (eval-goals2 [goal] db (atom 0))
+       goal (parse '(concat (1 2) (3) :x))]
+   (->> (eval-goals [goal] db (atom 0))
         first
-        (subs-vars2 ["x"])
-        format-muon2) => '(1 2 3)))
+        (subs-vars ["x"])
+        format-muon) => '(1 2 3)))
 
 ;; ## Implementation Details
 (fact
- (ast-list-to-seq2 [1 [2 ()]]) => [1 2])
+ (ast-list-to-seq [1 [2 ()]]) => [1 2])
 

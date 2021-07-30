@@ -33,7 +33,7 @@ In the following example, we define a small Muon program that asks the user for 
                                (muon/clj-step 3 :input (muon/continue (clojure.core/str "Hello, " :input) 4))
                                (muon/clj-step 4 :input (muon/continue (muon-clj.qepl-test/my-println :input) 5))
                                (muon/clj-step 5 :input (muon/return 42))])]
-   (qepl db [:int 1]) => 42
+   (qepl db ['muon/int 1]) => 42
    (provided
     (my-println "What is your name?") => nil
     (read-line) => "Muon"
@@ -47,8 +47,8 @@ If the number of results is different than one, an exception is raized.
  (let [db (core/load-program '[(muon/clj-step 1 :input (muon/continue (muon-clj.qepl-test/my-println "What is your name?") 2))
                                (muon/clj-step 1 :input (muon/continue (muon-clj.qepl-test/my-println "Was heißt du?") 2))
                                (muon/clj-step 2 :input (muon/return 43))])]
-   (qepl db [:int 1]) => (throws "Ambiguous progression for state: 1\n")
-   (qepl db [:int 3]) => (throws "No progression for state: 3\n")))
+   (qepl db ['muon/int 1]) => (throws "Ambiguous progression for state: 1\n")
+   (qepl db ['muon/int 3]) => (throws "No progression for state: 3\n")))
 
 ```
 State can be made of compound terms.

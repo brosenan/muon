@@ -5,15 +5,10 @@
 (def allocator (atom 0))
 
 (defn get-tests [db]
-  (->> (core/eval-goals [[:pair [:symbol "muon/test"]
-                          [:pair [:var "id"]
-                           [:pair [:var "goal"]
-                            [:pair [:var "num-results"] [:empty-list]]]]]]
-                        db allocator)
+  (->> (core/eval-goals [['muon/test [["id"] [["goal"] [["num-results"] ()]]]]] db allocator)
        (map (fn [result] (->> ["id" "goal" "num-results"]
-                              (map (fn [key] [(keyword key) (core/subs-vars [:var key] result)]))
+                              (map (fn [key] [(keyword key) (core/subs-vars [key] result)]))
                               (into {}))))
-       (map #(update % :id second))
        (map #(update % :num-results second))))
 
 (defn run-test [db test]
