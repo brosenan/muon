@@ -30,8 +30,8 @@ Integers, floating point numbers and strings are _tagged_ by placing them in a p
  (parse '()) => ()
  (parse '(1 2)) => '[[muon/int 1] [[muon/int 2] ()]]
  (parse '(:x :xs muon/...)) => [["x"] ["xs"]]
- (parse []) => []
- (parse ['a 'b]) => '[a [b []]]
+ (parse []) => :empty-vec
+ (parse ['a 'b]) => '[a [b :empty-vec]]
  (parse '[:x :xs muon/...]) => [["x"] ["xs"]])
 
 ```
@@ -50,8 +50,8 @@ Integers, floating point numbers and strings are _tagged_ by placing them in a p
  (format-muon ()) => ()
  (format-muon [['muon/int 1] [['muon/int 2] ()]]) => '(1 2)
  (format-muon [["x"] ["xs"]]) => '(:x :xs muon/...)
- (format-muon []) => []
- (format-muon ['a ['b []]]) => ['a 'b])
+ (format-muon :empty-vec) => []
+ (format-muon ['a ['b :empty-vec]]) => ['a 'b])
 
 ```
 `alloc-vars` takes a Muon AST and an integer `atom`, and allocates integers in place of the string variable nodes.
@@ -84,7 +84,9 @@ if the terms cannot be unified, or, if they can be unified, it returns the map o
  (unify [["x"] 2] [1 ["y"]] {}) => {"x" 1 "y" 2}
  (unify [["x"] 2] [1 ["x"]] {}) => nil
  (unify [2 3] [1 ["x"]] {}) => nil
- (unify [["x"] 2] 3 {}) => nil)
+ (unify [["x"] 2] 3 {}) => nil
+ (unify ["x"] true {"x" false}) => nil
+ (unify true ["x"] {"x" false}) => nil)
 
 ```
 Given a term (as AST) and a bindings map, `subs-vars` returns the given term after substituting all bound variables with their assigned values.
@@ -95,7 +97,8 @@ Given a term (as AST) and a bindings map, `subs-vars` returns the given term aft
  (subs-vars [["x"] ["foo" ["y"]]] {"x" 42
                                     "y" ()}) => [42 ["foo" ()]]
  (subs-vars ["x"] {"x" ["y"]
-                    "y" 42}) => 42)
+                    "y" 42}) => 42
+ (subs-vars ["x"] {"x" false}) => false)
 
 ```
 ## Program Handling

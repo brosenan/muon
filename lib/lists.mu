@@ -8,3 +8,11 @@
 (<- (reversed (:x :a ...) :arx)
     (reversed :a :ar)
     (concat :ar (:x) :arx))
+
+(vector? [])
+(<- (vector? [:_x :xs ...])
+    (vector? :xs))
+
+(list? ())
+(<- (list? (:_x :xs ...))
+    (list? :xs))

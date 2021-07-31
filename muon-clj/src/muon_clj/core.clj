@@ -9,38 +9,45 @@
     (float? expr) ['muon/float expr]
     (string? expr) ['muon/string expr]
     (keyword? expr) [(name expr)]
+    (and (vector? expr)
+         (empty? expr)) :empty-vec
     (and (sequential? expr)
          (seq expr)) (if (and (= (count expr) 3)
                               (= (nth expr 2) 'muon/...))
                        [(parse (first expr)) (parse (second expr))]
-                       [(parse (first expr)) (parse (rest expr))])
+                       [(parse (first expr)) (let [tail (rest expr)
+                                                   tail (if (vector? expr)
+                                                          (vec tail)
+                                                          tail)]
+                                               (parse tail))])
     :else expr))
 
 (defn format-muon [ast]
-  (if (vector? ast)
-    (cond
-      (= (count ast) 2) (let [tag (first ast)]
-                          (cond
-                            (or
-                             (and (= tag 'muon/int)
-                                  (int? (second ast)))
-                             (and (= tag 'muon/float)
-                                  (float? (second ast)))
-                             (and (= tag 'muon/string)
-                                  (string? (second ast)))) (second ast)
-                            :else (let [head (format-muon (first ast))
-                                        tail (format-muon (second ast))]
-                                    (cond
-                                      (seq? tail) (conj tail head)
-                                      (vector? tail) (vec (concat [head] tail))
-                                      :else (list head tail 'muon/...)))))
-      (= (count ast) 1) (let [var (first ast)
-                              name (if (int? var)
-                                     (str "#" var)
-                                     var)]
-                          (keyword name))
-      :else ast)
-    ast))
+  (cond
+    (vector? ast) (cond
+                    (= (count ast) 2) (let [tag (first ast)]
+                                        (cond
+                                          (or
+                                           (and (= tag 'muon/int)
+                                                (int? (second ast)))
+                                           (and (= tag 'muon/float)
+                                                (float? (second ast)))
+                                           (and (= tag 'muon/string)
+                                                (string? (second ast)))) (second ast)
+                                          :else (let [head (format-muon (first ast))
+                                                      tail (format-muon (second ast))]
+                                                  (cond
+                                                    (seq? tail) (conj tail head)
+                                                    (vector? tail) (vec (concat [head] tail))
+                                                    :else (list head tail 'muon/...)))))
+                    (= (count ast) 1) (let [var (first ast)
+                                            name (if (int? var)
+                                                   (str "#" var)
+                                                   var)]
+                                        (keyword name))
+                    :else ast)
+    (= ast :empty-vec) []
+    :else ast))
 
 (defn alloc-vars
   ([ast alloc]
@@ -69,12 +76,14 @@
 (defn unify [a b bindings]
   (cond
     (nil? bindings) nil
-    (variable? a) (if-let [a-val (bindings (first a))]
-                    (recur a-val b bindings)
-                    (assoc bindings (first a) b))
-    (variable? b) (if-let [b-val (bindings (first b))]
-                    (recur a b-val bindings)
-                    (assoc bindings (first b) a))
+    (variable? a) (let [a-val (bindings (first a))]
+                    (if (nil? a-val)
+                      (assoc bindings (first a) b)
+                      (recur a-val b bindings)))
+    (variable? b) (let [b-val (bindings (first b))]
+                    (if (nil? b-val)
+                      (assoc bindings (first b) a)
+                      (recur a b-val bindings)))
     (pair? a) (if (pair? b)
                 (let [[a-head a-tail] a
                       [b-head b-tail] b]
@@ -86,9 +95,10 @@
 
 (defn subs-vars [term bindings]
   (cond
-    (variable? term) (if-let [val (bindings (first term))]
-                       (recur val bindings)
-                       term)
+    (variable? term) (let [val (bindings (first term))]
+                       (if (nil? val)
+                         term
+                         (recur val bindings)))
     (pair? term) (let [[a b] term]
                    [(subs-vars a bindings) (subs-vars b bindings)])
     :else term))
