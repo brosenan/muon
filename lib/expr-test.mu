@@ -57,3 +57,59 @@
               42
               (t/sequential
                (the-big-question-of "life" "universe" "everything") 42))
+
+;; ## Control Flow
+
+;; The `do` expression takes zero or more sub-expressions and evaluates them in-order.
+;; It returns the value of the last expression.
+(t/test-model do-with-no-subexprs
+              (do)
+              ()
+              (t/sequential))
+(t/test-model do-with-subexprs
+              (do
+                (>> do-something)
+                (>> do-something-else))
+              3
+              (t/sequential
+               (do-something) 2
+               (do-something-else) 3))
+
+;; The `let` expression takes a vector of bindings (variable-expression pairs) and zero or more expressions.
+;; With no bindings, it works exactly like a `do` expression.
+(t/test-model let-without-bindings
+              (let []
+                (>> do-something)
+                (>> do-something-else))
+              3
+              (t/sequential
+               (do-something) 2
+               (do-something-else) 3))
+
+;; Given bindings, the bound expressions are being evaluated in order before evaluating the body.
+(t/test-model let-evaluates-bindings-in-order
+              (let [:foo (>> get-foo)
+                    :bar (>> get-bar)]
+                (>> do-something))
+              2
+              (t/sequential
+               (get-foo) "foo"
+               (get-bar) "bar"
+               (do-something) 2))
+
+;; The variable in each pair is bound to the result of evaluating the expression.
+(t/test-model let-binds-vars-to-expr-results
+              (let [:foo (>> get-foo)]
+                :foo)
+              "foo"
+              (t/sequential
+               (get-foo) "foo"))
+
+;; The values bound are quoted, so that they can be used as expressions even if the value returned 
+;; by the expression is not self-evaluating.
+(t/test-model let-binds-vars-to-quoted-value
+              (let [:list (>> get-some-list)]
+                :list)
+              (1 2 3)
+              (t/sequential
+               (get-some-list) (1 2 3)))
