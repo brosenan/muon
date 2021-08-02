@@ -113,3 +113,52 @@
               (1 2 3)
               (t/sequential
                (get-some-list) (1 2 3)))
+
+;; ## Definitions
+
+;; In this section we describe the ways in which new expression types can be introduced.
+;; Definitions are done through predicates that are being consulted during the evaluation
+;; process of expressions. By defining new solutions for said predicates we can introduce
+;; new types of expressions.
+
+;; ### Expression Definitions
+
+;; `defepxr` allows us to define one (new) expression in terms of another.
+;; It takes a pattern of the expression to be defined and a pattern of the pattern
+;; it would be defined as.
+;;
+;; In the following example we define the `println` expression, which takes one
+;; expression as argument, evaluates it (using a `let` expression) and invokes
+;; the imaginary `println` action with the result as parameter.
+(defexpr (println :str)
+  (let [(quote :str-val) :str]
+    (>> println :str-val)))
+
+;; One thing to note here is the fact that we _unquote_ `:str-val`. This is because
+;; we need it as a value rather than an expression (recall that actions
+;; require values as parameters).
+;;
+;; Now we can call the new `println` expression.
+(t/test-model defexpr-defines-expr
+              (println "foo")
+              ()
+              (t/sequential
+               (println "foo") ()))
+
+;; Since `defexpr` takes a pattern of the actual expression it defines,
+;; it is very useful for defining variadic expressions.
+;; The following example extends the previous definition of `println`, adding support for
+;; two arguments and above.
+(defexpr (println :first :second :rest ...)
+  (do
+    (println :first)
+    (println :second :rest ...)))
+
+;; Now we can call `println` with any number of arguments.
+(t/test-model defexpr-defines-variadic-expr
+              (println "one" "two" "three")
+              ()
+              (t/sequential
+               (println "one") ()
+               (println "two") ()
+               (println "three") ()))

@@ -37,3 +37,8 @@
     (case :expr-outcome
       (return :value) (step (let :bindings :body ...) () :outcome)
       (continue :action :next) (= :outcome (continue :action (let [(quote :value) :next :bindings ...] :body ...)))))
+
+;; defexpr
+(<- (step :expr :input :outcome)
+    (defexpr :expr :body)
+    (step :body :input :outcome))
