@@ -46,8 +46,8 @@
 ;; bind-args
 
 (bind-args [] () [])
-(<- (bind-args [:arg :args ...] (:param :params ...) [:arg :param :bindings ...])
-    (bind-args :args :params :bindings))
+(<- (bind-args [:param :params ...] (:arg :args ...) [:param :arg :bindings ...])
+    (bind-args :params :args :bindings))
 
 ;; defun
 (<- (defexpr (:f :args ...)

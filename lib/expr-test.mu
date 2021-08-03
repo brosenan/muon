@@ -128,7 +128,7 @@
 ;; it would be defined as.
 ;;
 ;; In the following example we define the `println` expression, which takes one
-;; expression as argument, evaluates it (using a `let` expression) and invokes
+;; expression as parameter, evaluates it (using a `let` expression) and invokes
 ;; the imaginary `println` action with the result as parameter.
 (defexpr (println :str)
   (let [(quote :str-val) :str]
@@ -145,7 +145,7 @@
               (t/sequential
                (println "foo") ()))
 
-;; Since `defexpr` takes a pattern of the actual expression it defines,
+;; Since `defexpr` takes a pattern of the expression it defines,
 ;; it is very useful for defining variadic expressions.
 ;; The following example extends the previous definition of `println`, adding support for
 ;; two arguments and above.
@@ -166,18 +166,19 @@
 ;; ### Function Definitions
 
 ;; While similar, `defexpr` defines _expressions_, not _functions_, as they are defined in most
-;; programming languages. Specifically, the evaluation order is determined by the body.
-;; and there is no guarantee that the parameters passed to such an expression are evaluated before
+;; programming languages. Specifically, the evaluation order of the arguments is determined by the body.
+;; and there is no guarantee that the arguments passed to such an expression are evaluated before
 ;; the body of the definition.
 ;;
 ;; In contrast, `defun` is a more "standard" function definition.
-;; Simlalr to its counterpart in other Lisps, syntax of `defun` consists of a function name,
-;; a vector of arguments and zero or more expressions acting as the body.
-;; A call to a function defined using `defun` will always start by evaluating the parameters first,
+;; Simlalr to its counterpart in other Lisps, the syntax of `defun` consists of a function name,
+;; a vector of parameters and zero or more expressions acting as the body.
+;; A call to a function defined using `defun` will always start by evaluating the arguments first,
 ;; and only then will the body be evaluated as well.
 ;;
-;; In the following example we define two functions: `strcat` which wraps around the (imaginary)
-;; `strcat` action. It unquotes the arguments to be able to use the plain strings in an action.
+;; In the following example we define two functions. The first is `strcat` which wraps around
+;; the (imaginary) `strcat` action. It unquotes the parameters to be able to use the plain strings
+;; in an action.
 (defun strcat [(quote :s1-value) (quote :s2-value)]
   (>> strcat :s1-value :s2-value))
 
@@ -195,15 +196,15 @@
                 (strcat "Hello, " "Muon") "Hello, Muon"
                 (println "Hello, Muon") ()))
 
-;; #### Implementation Details
+;; #### Bindging Arguments to Parameters
 
 ;; Internally, the `bind-args` predicate creates a bindings vector out of an arguments vector and a
 ;; list of parameter expressions.
-(t/test-value bind-args-returns-empty-bindings-for-no-args
+(t/test-value bind-args-returns-empty-bindings-for-no-params
               (ex/bind-args [] () :result)
               :result [])
-(t/test-value bind-args-returns-bindings-for-args-with-matching-params
-              (ex/bind-args [arg1 arg2 arg3] (param1 param2 param3) :result)
-              :result [arg1 param1
-                       arg2 param2
-                       arg3 param3])
+(t/test-value bind-args-returns-bindings-for-params-with-matching-args
+              (ex/bind-args [param1 param2 param3] (arg1 arg2 arg3) :result)
+              :result [param1 arg1
+                       param2 arg2
+                       param3 arg3])
