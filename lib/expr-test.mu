@@ -162,3 +162,48 @@
                (println "one") ()
                (println "two") ()
                (println "three") ()))
+
+;; ### Function Definitions
+
+;; While similar, `defexpr` defines _expressions_, not _functions_, as they are defined in most
+;; programming languages. Specifically, the evaluation order is determined by the body.
+;; and there is no guarantee that the parameters passed to such an expression are evaluated before
+;; the body of the definition.
+;;
+;; In contrast, `defun` is a more "standard" function definition.
+;; Simlalr to its counterpart in other Lisps, syntax of `defun` consists of a function name,
+;; a vector of arguments and zero or more expressions acting as the body.
+;; A call to a function defined using `defun` will always start by evaluating the parameters first,
+;; and only then will the body be evaluated as well.
+;;
+;; In the following example we define two functions: `strcat` which wraps around the (imaginary)
+;; `strcat` action. It unquotes the arguments to be able to use the plain strings in an action.
+(defun strcat [(quote :s1-value) (quote :s2-value)]
+  (>> strcat :s1-value :s2-value))
+
+;; Then we define the function `greet` which takes a name of a person as parameter and prints a
+;; greeting for that person.
+(defun greet [:name]
+  (println (strcat "Hello, " :name)))
+
+;; Calling this function will first concatenate "Hello, " to the value we give as argument,
+;; and then prints the resulting string.
+(t/test-model defun-defines-functions
+               (greet "Muon")
+               ()
+               (t/sequential
+                (strcat "Hello, " "Muon") "Hello, Muon"
+                (println "Hello, Muon") ()))
+
+;; #### Implementation Details
+
+;; Internally, the `bind-args` predicate creates a bindings vector out of an arguments vector and a
+;; list of parameter expressions.
+(t/test-value bind-args-returns-empty-bindings-for-no-args
+              (ex/bind-args [] () :result)
+              :result [])
+(t/test-value bind-args-returns-bindings-for-args-with-matching-params
+              (ex/bind-args [arg1 arg2 arg3] (param1 param2 param3) :result)
+              :result [arg1 param1
+                       arg2 param2
+                       arg3 param3])

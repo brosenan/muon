@@ -42,3 +42,15 @@
 (<- (step :expr :input :outcome)
     (defexpr :expr :body)
     (step :body :input :outcome))
+
+;; bind-args
+
+(bind-args [] () [])
+(<- (bind-args [:arg :args ...] (:param :params ...) [:arg :param :bindings ...])
+    (bind-args :args :params :bindings))
+
+;; defun
+(<- (defexpr (:f :args ...)
+      (let :bindings :exprs ...))
+    (defun :f :params :exprs ...)
+    (bind-args :params :args :bindings))
