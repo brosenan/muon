@@ -1,7 +1,8 @@
 (ns expr
   (use proc p [step])
   (require types ty)
-  (require logic l [case =]))
+  (require logic l [case =])
+  (require lists li [concat]))
 
 ;; quote
 (step (quote :x) :_input (return :x))
@@ -54,3 +55,20 @@
       (let :bindings :exprs ...))
     (defun :f :params :exprs ...)
     (bind-args :params :args :bindings))
+(<- (step :f :_input (return :f))
+    (defun :f :_params :_exprs ...))
+
+;; Calling quoted function names
+(defexpr ((quote :f) :args ...)
+  (:f :args ...))
+
+;; partial and closure
+(defexpr (partial :func :arg :args ...)
+  (let [:arg-val :arg
+        (quote (closure :_func1 :arg-vals ...)) (partial :func :args ...)]
+    (quote (closure :func :arg-val :arg-vals ...))))
+(defexpr (partial :func)
+  (quote (closure :func)))
+(<- (defexpr ((closure :f :closure-args ...) :args ...)
+      (:f :all-args ...))
+    (concat :closure-args :args :all-args))

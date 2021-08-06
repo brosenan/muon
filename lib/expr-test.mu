@@ -1,6 +1,6 @@
 (ns expr-test
   (require testing t)
-  (require expr ex [quote >> do let defexpr defun])
+  (require expr ex [quote >> do let defexpr defun partial])
   (use proc p [step]))
 
 ;; # expr: A Lisp-like Language
@@ -190,11 +190,11 @@
 ;; Calling this function will first concatenate "Hello, " to the value we give as argument,
 ;; and then prints the resulting string.
 (t/test-model defun-defines-functions
-               (greet "Muon")
-               ()
-               (t/sequential
-                (strcat "Hello, " "Muon") "Hello, Muon"
-                (println "Hello, Muon") ()))
+              (greet "Muon")
+              ()
+              (t/sequential
+               (strcat "Hello, " "Muon") "Hello, Muon"
+               (println "Hello, Muon") ()))
 
 ;; #### Bindging Arguments to Parameters
 
@@ -208,3 +208,79 @@
               :result [param1 arg1
                        param2 arg2
                        param3 arg3])
+
+;; ## Functional Programming
+
+;; To support functional programming we need to allow functions to be first-class values.
+;; We already use pattern matching on the function name to make function calls,
+;; so passing a function name to a function can allow that function to call it
+;; by placing the name as a first element in a list.
+;; However, for this to be convenient, function names should be self-evaluating.
+;; For example, given the above definition of `greet`, the symbol `greet` evaluates to itself.
+(t/test-model defun-makes-function-name-self-evaluate
+              greet
+              greet
+              (t/sequential))
+
+;; Now we can define a function that takes a function name as parameter and calls it with some
+;; arguments.
+(defun with-muon [:f]
+  (:f "Muon"))
+
+(t/test-model call-with-function-name
+              (with-muon greet)
+              ()
+              (t/sequential
+               (strcat "Hello, " "Muon") "Hello, Muon"
+               (println "Hello, Muon") ()))
+
+;; Note that for this to work we needed to make `((quote foo) args ...)` be accepted as `(foo args ...)`.
+(t/test-model quoted-function
+              ((quote greet) "Muon")
+              ()
+              (t/sequential
+               (strcat "Hello, " "Muon") "Hello, Muon"
+               (println "Hello, Muon") ()))
+
+;; ### Closures
+
+;; A closure is a combination of a function to be called with _some_ of its arguments.
+;; The `partial` function takes a function name and zero or more arguments for it
+;; and returns a closure term, containing the function name and the argument values.
+;;
+;; In the following example we call `partial` with some function name and two calls
+;; to the fictional `input-line` action.
+;; The actions are performed before returning the closure.
+(t/test-model partial-returns-closure
+              (partial myfunc (>> input-line) (>> input-line))
+              (ex/closure myfunc (quote "foo") (quote "bar"))
+              (t/sequential
+               (input-line) "foo"
+               (input-line) "bar"))
+
+;; A closure can be used in place of a function name as the first element of a list expression.
+;; In such a case, the function named by the closure will be evaluated, with a concatenation of
+;; the colsure arguments with the arguments given as the rest of the list as arguments to the function.
+(t/test-model closure-call
+              ((ex/closure println (quote "foo") (quote "bar")) "baz")
+              ()
+              (t/sequential
+               (println "foo") ()
+               (println "bar") ()
+               (println "baz") ()))
+
+;; Combining the two elements, we can have higher-order functions, ones that receive and return functions.
+;;
+;; In the following example we will use both to eventually print "Hello, Muon".
+;; First, the `add-prefix` function takes a string and returns a function that takes another string and
+;; concatenates the two.
+(defun add-prefix [:prefix]
+  (partial strcat :prefix))
+
+;; Now we can use the previously-defined `with-muon` to do what we want:
+(t/test-model partial-used-to-greet
+              (println (with-muon (add-prefix "Hello, ")))
+              ()
+              (t/sequential
+               (strcat "Hello, " "Muon") "Hello, Muon"
+               (println "Hello, Muon") ()))
