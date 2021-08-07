@@ -8,6 +8,7 @@
       * [Bindging Arguments to Parameters](#bindging-arguments-to-parameters)
   * [Functional Programming](#functional-programming)
     * [Closures](#closures)
+    * [A Note About Lamdas](#a-note-about-lamdas)
 ```clojure
 (ns expr-test
   (require testing t)
@@ -332,5 +333,60 @@ Now we can use the previously-defined `with-muon` to do what we want:
               (t/sequential
                (strcat "Hello, " "Muon") "Hello, Muon"
                (println "Hello, Muon") ()))
+
+```
+### A Note About Lamdas
+
+A reader may wonder, at this point, why we haven't introduced lambdas. After all, they are considered the
+ hallmark of functional programming languages.
+While there are a few different ways to implement lambdas in Muon, none of them is as simple as the
+features we have described so far.
+To understand why this is, we need to understand how Muon, as a logic-programming language, treats variables.
+Logic variables (e.g., `:var`) represent _unknowns_. This means that each variable actually holds one value,
+we just don't know what it is.
+Every time a computation considers a statement (e.g., a `defun` or `defexpr`), it takes its variables to be
+_fresh_, meaning that the values they can take are independent of any past values other invocations of the
+same statement were given.
+However, a lambda is different. A lambda is a _term_, not a statement. Once created, we want to use it and often,
+reuse it with different values. Unfortunately, once we "uncover" the value of an "unknown", it cannot be uncovered.
+In other words, the concept of an unknown, which works well for definitions, doesn't work well for lambdas.
+To demonstrate this we will define our own concept of a lambda, the way it should intuitively be defined.
+First we will make it self-evaluate, so it can be used as an expression.
+```clojure
+(defexpr (lambda :params :body ...)
+  (quote (lambda :params :body ...)))
+
+```
+Next, we will define an invocation of this lambda by converting the invocation to a `let` expression.
+```clojure
+(<- (defexpr ((lambda :params :body ...) :args ...)
+      (let :bindings :body ...))
+    (ex/bind-args :params :args :bindings))
+
+```
+Now we can use lambdas... but only once per lambda.
+```clojure
+(t/test-model lambda-use-once
+              (with-muon (lambda [:who] (println (strcat "Hello, " :who))))
+              ()
+              (t/sequential
+               (strcat "Hello, " "Muon") "Hello, Muon"
+               (println "Hello, Muon") ()))
+
+```
+But the same lambda cannot be used more than once (with different arguments):
+```clojure
+(t/test-failure lambda-use-twice
+                (t/qepl-sim
+                 (let [:greeter (lambda [:who] (println (strcat "Hello, " :who)))]
+                   (:greeter "World")
+                   (:greeter "Muon"))
+                 ()
+                 ()
+                 (t/sequential
+                  (strcat "Hello, " "World") "Hello, World"
+                  (println "Hello, World") ()
+                  (strcat "Hello, " "Muon") "Hello, Muon"
+                  (println "Hello, Muon") ())))
 ```
 
