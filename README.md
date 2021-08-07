@@ -1,6 +1,10 @@
 # Muon
 
-Muon is a pure logic programming language.
+Muon is an experimental language built from first principles. It can be described as either:
+
+* A pure logic-programming language,
+* A Lisp that uses logical deductions in place of macros, or
+* A test-bed for programming language experimentation.
 
 ## Installation
 
