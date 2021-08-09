@@ -6,7 +6,7 @@
 ;; In this doc we describe Muon from the ground up. This description refers to the language itself
 ;; and not to any of its libraries, some of which implement language features such as functional
 ;; programming (see [expr](expr.md)).
-;;
+
 ;; This `.md` file is derived from the Muon source file [examples/language-test.mu](examples/language-test.mu).
 ;; To execute the tests here, use:
 ;; ```
@@ -32,7 +32,7 @@ forty-two
 
 ;; So any valid EDN s-expression is a valid _statement_ in Muon, and a program consists of statements.
 ;; But what does it all mean?
-;;
+
 ;; The simplest thing we can do with these statements is to see if they are defined.
 ;; The following statement is a test that will succeed if and only if the statement `42` is defined.
 (t/test-success fourty-two-is-defined
@@ -44,7 +44,7 @@ forty-two
 
 ;; But obviously, this is not very helpful. To get something meaningful out of our statements,
 ;; they need to have some structure which we can leverage to make meaningful queries.
-;;
+
 ;; For example, we can pattern-match against statements.
 (t/test-value pattern-match-statement
               (this is :adverb wrong) ;; A pattern to be matched.
@@ -57,7 +57,7 @@ forty-two
 ;; (this is surely wrong)
 ;; ```
 ;; And the variable `:adverb` matched the symbol `surely`.
-;;
+
 ;; Logic variables are simply placeholders, matching any part of a statement.
 ;; Once they are matched, we can use them to build other values (terms), like in the following example:
 (t/test-value match-and-reconstruct-statement
@@ -75,7 +75,7 @@ forty-two
 ;; In the above example we provided the beginning of a vector (`[]`) and asked to match the rest (`:others`).
 ;; By placing `...` after `:others`, as the last element of the vector, we told Muon to match `:others` against
 ;; the rest of the vector rather than the third element.
-;;
+
 ;; The same can be done with a list:
 (t/test-value pattern-match-list-tail
               (this :the-rest ...)
@@ -116,12 +116,12 @@ forty-two
               "Shmi")
 
 ;; But for several reasons, performance being one of them, we recommend following this convention.
-;;
+
 ;; Under this convention, the symbol at the beginning of the list is called a _predicate_.
 ;; This use of the term is derived from [mathematical logic](https://en.wikipedia.org/wiki/Predicate_(mathematical_logic))
 ;; and is similar to its use in [Prolog](https://en.wikipedia.org/wiki/Prolog), but unlike Prolog, where predicates are
 ;; fundamental, here they are merely a convention.
-;;
+
 ;; So now that we have a standard way to define relationships in the royal family of SciFi, we can use it to ask questions,
 ;; such as who is Luke's father?
 (t/test-value who-is-luke's-father?
@@ -162,10 +162,10 @@ forty-two
 
 ;; The ability to query facts using pattern matching is powerful for some applications, but this is not yet a programming language.
 ;; To allow full-blown programming capabilities, we need to add reasoning, that is, the ability to draw conclusions from facts.
-;;
+
 ;; _Rules_ are the way we do this in Muon. A rule is a statement that is a list containing the symbol `<-` followed by one _head_ term
 ;; and zero or more _body_ terms. The arrow symbol shows the direction of entailment: from the body to the head.
-;;
+
 ;; For example, the following two rules state that `:parent` is the parent of `:child` if they are either their father or mother.
 (<- (parent :parent :child)
     (mother :parent :child))
@@ -174,7 +174,7 @@ forty-two
 
 ;; These rules define a set of implicit facts of the form `(parent :parent :child)` that are true for whenever `(mother :parent :child)`
 ;; or `(father :parent :child)`, for some `:parent` and some `:child`.
-;;
+
 ;; With these rules in place, we can query these new facts as if they were written explicitly.
 
 (test luke-has-two-parents
@@ -269,7 +269,7 @@ forty-two
 ;; Muon has a simple module system that:
 ;; * Allows for source files to be loaded and
 ;; * Manages the lexical scope of symbols.
-;;
+
 ;; **Note**: The information below is not authoritative and may be outdated or incomplete.
 ;; For authoritative information see the [module system implementation documentation](muon-clj/modules.md).
 
@@ -281,40 +281,40 @@ forty-two
 
 ;; It begins with the name of the current module (`my.module` in this case). This has to correspond to the file path with respect to one of the
 ;; roots provided to the interpreter. For example, `my.module` should reside in the file `my/module.mu`.
-;;
+
 ;; The module name is followed by zero or more clauses that reference other modules.
 ;; Both the `request` and `use` clauses have the same structure. They begin with a module name (`some.module`, `some.other.module`
 ;; and 'some.third.module` respectively), followed by an alias (`m1`, `m2` and `m3` respectively), followed by an optional vector containing symbols.
-;;
+
 ;; A `require` clause will do all of the following:
 ;; * Load the file whose path corresponds to the module name.
 ;; * Make symbols that use the alias as their namespace (e.g., `m1/some-symbol`) in the current module refer to the corresponding symbol in the imported module.
 ;; * If provided, make all the symbols in the vector refer to the imported module if written without a namespace in the current module.
-;;
+
 ;; For example, the first `require` clause will load the file `some/module.mu`, make sure that every symbol with the `m1/` prefix in `my.module`
 ;; will reference the corresponding symbol in `some.module` and make sure that the symbols `some`, `exported` and `symbols` used in `my.module`
 ;; module without a prefix will reference the corresponding symbols in `some.module`.
-;;
+
 ;; A `use` does the same except it does _not_ load a module file.
 
 ;; ## Defining Languages in Muon
 
 ;; This is a bonus section. It is bonus, because we have already introduced the entire language and this part is not really needed.
 ;; Congratulations, you can stop reading now and go write something in Muon.
-;;
+
 ;; But much of the "Muon experience" revolves around defining languages and using them to do cool stuff. So I think no description of Muon is complete
 ;; without an explanation of what it means to _define a langauge_.
-;;
+
 ;; In other lisps that would involve the use of the macro system and an explanation of definitions such as `defmacro` will be necessary.
 ;; But in Muon all we have are facts and rules. And yet, we can define languages.
-;;
+
 ;; So here we will demonstrate and explain how this is done, using only the language features we already know.
 
 ;; ### A Language of Family Relations
 
 ;; As our running example, we will build a language for expressing relations between family members. We will use the Star Wars family already defined
 ;; as the set of facts our language will refer to.
-;;
+
 ;; To express the semantics of our language we need to define a predicate that will give relationships their meaning. We will call it `rel`.
 ;; Here we define our two basic relationships: `mother` and `father`:
 (<- (rel mother :mother :child)
@@ -345,7 +345,7 @@ forty-two
 
 ;; But to be really cool, a language needs to have composition. In our case, the `->` operator will take zero or more elements and will
 ;; walk the family tree following the combined path.
-;;
+
 ;; First, we define the semantics of the operator for a zero path. This will take us from one person to themselves.
 (rel (->) :a :a)
 
@@ -356,7 +356,7 @@ forty-two
 
 ;; Here, for `(-> :rel :rels ...)` to take us from `:a` to `:c` we need the first relationship `:rel` to take us from `:a` to `:b`
 ;; and then the rest of the relationships `(-> :rels ...)`, to take us the rest of the way, to `:c`.
-;;
+
 ;; Now we can walk through paths in our tree.
 (t/test-value anakin's-daghter's-son's-father-is-han
               (rel (-> father mother (inv father)) "Anakin" :who)
@@ -368,7 +368,7 @@ forty-two
 ;; The technique we have used so far to define our language is to define solutions for the predicate `rel`. This is cool and all, but
 ;; to really give our language the feel of a real language, we need to allow our users to make their own definitions without worrying about
 ;; logic deduction. After all, relatioships can be defined in term of themselves.
-;;
+
 ;; But how do we define a definition? Recall that in Muon, any valid s-expression is a valid statement. So we can write this:
 (defrel parent (| mother father))
 
@@ -381,7 +381,7 @@ forty-two
 ;; A chain rule defines the semantics of some expression (represented by `:head` in the above rule) by first looking for a definition for it.
 ;; The definition defines it in terms of some other expression (in this case, this is `(-> :body ...)`, where the `->` is implicit in the
 ;; definition). Finally, it evaluates the other expression.
-;;
+
 ;; Now we can use `defrel` to define the `|` operator (indicating alternatives), needed for our definition of `parent`.
 (defrel (| :rel1 :rel2) :rel1)  ;; It is either :rel1...
 (defrel (| :rel1 :rel2) :rel2)  ;; ... or :rel2.
