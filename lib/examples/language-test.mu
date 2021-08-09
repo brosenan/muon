@@ -296,4 +296,143 @@ forty-two
 ;; module without a prefix will reference the corresponding symbols in `some.module`.
 ;;
 ;; A `use` does the same except it does _not_ load a module file.
+
+;; ## Defining Languages in Muon
+
+;; This is a bonus section. It is bonus, because we have already introduced the entire language and this part is not really needed.
+;; Congratulations, you can stop reading now and go write something in Muon.
+;;
+;; But much of the "Muon experience" revolves around defining languages and using them to do cool stuff. So I think no description of Muon is complete
+;; without an explanation of what it means to _define a langauge_.
+;;
+;; In other lisps that would involve the use of the macro system and an explanation of definitions such as `defmacro` will be necessary.
+;; But in Muon all we have are facts and rules. And yet, we can define languages.
+;;
+;; So here we will demonstrate and explain how this is done, using only the language features we already know.
+
+;; ### A Language of Family Relations
+
+;; As our running example, we will build a language for expressing relations between family members. We will use the Star Wars family already defined
+;; as the set of facts our language will refer to.
+;;
+;; To express the semantics of our language we need to define a predicate that will give relationships their meaning. We will call it `rel`.
+;; Here we define our two basic relationships: `mother` and `father`:
+(<- (rel mother :mother :child)
+    (mother :mother :child))
+(<- (rel father :father :child)
+    (father :father :child))
+
+;; Now we can use `rel` to check who is the child of Han and Lea.
+(t/test-value lea's-child-is-ben
+              (rel mother "Lea" :who)
+              :who
+              "Ben")
+(t/test-value han's-child-is-ben
+              (rel father "Han" :who)
+              :who
+              "Ben")
+
+;; So far, easy, but hardly a language. We can fix this. First, let us define the `inv` operator, which inverses the direction of a relationship.
+(<- (rel (inv :rel) :b :a)
+    (rel :rel :a :b))
+
+;; This means that the inverse of relationship `:rel` between `:a` and `:b` is a relationship between `:b` and `:a`.
+;; This can tell us who is Luke's father:
+(t/test-value luke-i-am-your-father
+              (rel (inv father) "Luke" :who)
+              :who
+              "Anakin")
+
+;; But to be really cool, a language needs to have composition. In our case, the `->` operator will take zero or more elements and will
+;; walk the family tree following the combined path.
+;;
+;; First, we define the semantics of the operator for a zero path. This will take us from one person to themselves.
+(rel (->) :a :a)
+
+;; Now we add the case of one or more elements.
+(<- (rel (-> :rel :rels ...) :a :c)
+    (rel :rel :a :b)
+    (rel (-> :rels ...) :b :c))
+
+;; Here, for `(-> :rel :rels ...)` to take us from `:a` to `:c` we need the first relationship `:rel` to take us from `:a` to `:b`
+;; and then the rest of the relationships `(-> :rels ...)`, to take us the rest of the way, to `:c`.
+;;
+;; Now we can walk through paths in our tree.
+(t/test-value anakin's-daghter's-son's-father-is-han
+              (rel (-> father mother (inv father)) "Anakin" :who)
+              :who
+              "Han")
+
+;; ### Defining Definitions
+
+;; The technique we have used so far to define our language is to define solutions for the predicate `rel`. This is cool and all, but
+;; to really give our language the feel of a real language, we need to allow our users to make their own definitions without worrying about
+;; logic deduction. After all, relatioships can be defined in term of themselves.
+;;
+;; But how do we define a definition? Recall that in Muon, any valid s-expression is a valid statement. So we can write this:
+(defrel parent (| mother father))
+
+;; and call it a definition. Now, all that is left to do is to make it mean something. The following rule takes the first step:
+(<- (rel :head :a :b)
+    (defrel :head :body ...)
+    (rel (-> :body ...) :a :b))
+
+;; This rule is what we call a _chain rule_ (inspired by its [namesake in calculus](https://en.wikipedia.org/wiki/Chain_rule)).
+;; A chain rule defines the semantics of some expression (represented by `:head` in the above rule) by first looking for a definition for it.
+;; The definition defines it in terms of some other expression (in this case, this is `(-> :body ...)`, where the `->` is implicit in the
+;; definition). Finally, it evaluates the other expression.
+;;
+;; Now we can use `defrel` to define the `|` operator (indicating alternatives), needed for our definition of `parent`.
+(defrel (| :rel1 :rel2) :rel1)  ;; It is either :rel1...
+(defrel (| :rel1 :rel2) :rel2)  ;; ... or :rel2.
+
+;; And now, our definition of `parent` finally has meaning.
+(test ben-has-two-parents
+      (rel (inv parent) "Ben" :x)
+      2)
+
+;; Or less awkwardly, Ben is the `child` of two people.
+(defrel child (inv parent))
+
+(test ben-is-the-child-of-two-people
+      (rel child "Ben" :x)
+      2)
+
+;; We can define `self` as a zero-path.
+(defrel self)
+
+(t/test-value pizza-is-itself
+              (rel self "Pizza" :x)
+              :x
+              "Pizza")
+
+;; A grandfather is the father of a parent.
+(defrel grandfather
+  father parent)
+
+(t/test-value anakin-is-ben's-grandfather
+              (rel grandfather "Anakin" :who)
+              :who
+              "Ben")
+
+;; Definitions can be recursive. For example, the following definition defines the `*` operator, inspired by regular expressions.
+;; It represents zero or more repetitions of its argument.
+(defrel (* :rel)
+  (| self
+     (-> :rel (* :rel))))
+
+;; This can be used to define the concept of an ancestor.
+(defrel ancestor
+  (* parent))
+
+;; We can test this by counting Shmi's descendants: herself, Anakin, Luke, Lea and Ben.
+(test shmi-is-the-ancestor-of-five
+      (rel ancestor "Shmi" :x)
+      5)
+
+;; That's it! That's all that's into defining languages in Muon. Well, kinda... at least in principle.
+;; Because Muon is pure, if your language requires any "real" computation such as numeric calculations, string manipulation or user interaction,
+;; your language will need to use the [QEPL](muon-clj/qepl.md). To do this, instead of defining the semantics of your langauge in terms of
+;; some arbitrary predicate you choose (`rel` in our case), you'll need to define the semantics in terms of the `step` predicate queried by the QEPL,
+;; either directly or indirectly through one of the definition mechanisms provided by other languages (e.g., [defexpr](expr.md#definitions)).
 the-end
