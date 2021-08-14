@@ -1,49 +1,36 @@
-* [Decimals](#decimals)
-  * [Increment and Decrement](#increment-and-decrement)
-    * [Implementation Details](#implementation-details)
-  * [Comparison](#comparison)
-```clojure
 (ns decimals-test
   (require testing t)
   (require decimals d))
 
-```
-# Decimals
+;; # Decimals
 
-This module defines arithmetic operations for decimals, using pure logic.
+;; This module defines arithmetic operations for decimals, using pure logic.
 
-It represents numbers using lists of digits, read from left to right. For example, `(4 2)` represents the number 42.
+;; It represents numbers using lists of digits, read from left to right. For example, `(4 2)` represents the number 42.
 
-## Increment and Decrement
+;; ## Increment and Decrement
 
-`d/inc` takes a decimal and increments it.
-```clojure
+;; `d/inc` takes a decimal and increments it.
 (t/test-value inc-increments-23999
               (d/inc (2 3 9 9 9) :x)
               :x
               (2 4 0 0 0))
 
-```
-`d/dec` decrements a decimal.
-```clojure
+;; `d/dec` decrements a decimal.
 (t/test-value dec-decrements-24000
               (d/dec (2 4 0 0 0) :x)
               :x
               (2 3 9 9 9))
 
-```
-### Implementation Details
+;; ### Implementation Details
 
-`d/digits` provides a list of the decimal digits.
-```clojure
+;; `d/digits` provides a list of the decimal digits.
 (t/test-value digits
               (d/digits :digits)
               :digits
               (0 1 2 3 4 5 6 7 8 9))
 
-```
-`d/inc-digit` provides, for a digit in the range [0, 8], the next one, with carry `false`.
-```clojure
+;; `d/inc-digit` provides, for a digit in the range [0, 8], the next one, with carry `false`.
 (t/test-value inc-digit-returns-8-for-7
               (d/inc-digit 7 :next :_carry)
               :next
@@ -53,9 +40,7 @@ It represents numbers using lists of digits, read from left to right. For exampl
               :carry
               false)
 
-```
-For 9 it provides 0 with carry `true`.
-```clojure
+;; For 9 it provides 0 with carry `true`.
 (t/test-value inc-digit-returns-0-for-9
               (d/inc-digit 9 :next :_carry)
               :next
@@ -65,9 +50,7 @@ For 9 it provides 0 with carry `true`.
               :carry
               true)
 
-```
-`d/dec-digit` provides, for a digit in the range [1. 9], the previous digit and carry `false`.
-```clojure
+;; `d/dec-digit` provides, for a digit in the range [1. 9], the previous digit and carry `false`.
 (t/test-value dec-digit-returns-6-for-7
               (d/dec-digit 7 :prev :_carry)
               :prev
@@ -77,9 +60,7 @@ For 9 it provides 0 with carry `true`.
               :carry
               false)
 
-```
-For 0, it returns 9 and carry `true`.
-```clojure
+;; For 0, it returns 9 and carry `true`.
 (t/test-value dec-digit-returns-9-for-0
               (d/dec-digit 0 :prev :_carry)
               :prev
@@ -89,9 +70,7 @@ For 0, it returns 9 and carry `true`.
               :carry
               true)
 
-```
-`d/inc-rev` increments a reversed (least digit first) decimal.
-```clojure
+;; `d/inc-rev` increments a reversed (least digit first) decimal.
 (t/test-value inc-rev-increments-0
               (d/inc-rev () :result)
               :result
@@ -109,9 +88,7 @@ For 0, it returns 9 and carry `true`.
               :result
               (0 0 0 3))
 
-```
-`d/dec-rev` decrements a reversed (least digit first) decimal.
-```clojure
+;; `d/dec-rev` decrements a reversed (least digit first) decimal.
 (t/test-value dec-rev-decrements-7-to-6
               (d/dec-rev (7) :result)
               :result
@@ -125,11 +102,9 @@ For 0, it returns 9 and carry `true`.
               :result
               (9 9 9 2))
 
-```
-## Comparison
+;; ## Comparison
 
-`d/is-zero` returns whether a given number represents zero.
-```clojure
+;; `d/is-zero` returns whether a given number represents zero.
 (t/test-value is-zero-returns-true-for-zero
               (d/is-zero (0 0 0 0 0) :zero?)
               :zero?
@@ -138,5 +113,3 @@ For 0, it returns 9 and carry `true`.
               (d/is-zero (0 0 0 2 0) :zero?)
               :zero?
               false)
-```
-

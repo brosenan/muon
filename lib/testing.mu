@@ -1,6 +1,7 @@
 (ns testing
   (require proc p)
-  (require logic l [case & =]))
+  (require logic l [case & =])
+  (require decimals d))
 
 (<- (test :name :goal 1)
     (test-value :name :goal :expected :expected))
@@ -43,6 +44,19 @@
 
 (is-final pure true)
 
-(<- (act by-def :action :result by-def)
-    (defaction :action :result))
-(is-final by-def true)
+(<- (act (by-def :n) :action :result (by-def :n-1))
+    (defaction :action :result)
+    (d/dec :n :n-1))
+(<- (is-final (by-def :n) :final?)
+    (d/is-zero :n :final?))
+
+(<- (act (| :model :models ...) :action :result (| :sub-next :models ...))
+    (act :model :action :result :sub-next))
+(<- (act (| :model :models ...) :action :result (| :model :sub-next ...))
+    (act (| :models ...) :action :result (| :sub-next ...)))
+(<- (is-final (| :model :models ...) :final?)
+    (is-final :model :subfinal?)
+    (case :subfinal?
+      true (is-final (| :models ...) :final?)
+      false (= :final? false)))
+(is-final (|) true)

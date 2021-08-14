@@ -8,6 +8,7 @@
       * [Pure Model](#pure-model)
       * [Sequential Model](#sequential-model)
       * [Definition-Based-Model](#definition-based-model)
+      * [Model Composition](#model-composition)
 ```clojure
 (ns testing-test
   (require testing t)
@@ -230,24 +231,95 @@ the behavior of some of the actions used in the example program.
 The `t/by-def` model can perform the defined actions, returning the defined results.
 ```clojure
 (t/test-value by-def-returns-action-result
-              (t/act t/by-def (strcat "Hello, " "Muon") :result :next)
+              (t/act (t/by-def (1 2))
+                     (strcat "Hello, " "Muon") :result :next)
               :result
               "Hello, Muon")
 
 ```
-It always transitions to itself.
+The argument it takes is a [decimal](decimals.md) that represents the action count (number of expected actions).
+Every action decrements this number.
 ```clojure
 (t/test-value by-def-transitions-to-itself
-              (t/act t/by-def (strcat "Hello, " "Muon") :result :next)
+              (t/act (t/by-def (1 2)) (strcat "Hello, " "Muon") :result :next)
               :next
-              t/by-def)
+              (t/by-def (1 1)))
 
 ```
-It is an accepting state.
+It is final if and only if the action count is zero.
 ```clojure
-(t/test-value by-def-is-accepting
-              (t/is-final t/by-def :final?)
+(t/test-value by-def-is-not-final-for-non-zero-action-count
+              (t/is-final (t/by-def (0 0 1)) :final?)
+              :final?
+              false)
+(t/test-value by-def-is-final-for-zero-action-count
+              (t/is-final (t/by-def (0 0 0)) :final?)
               :final?
               true)
+
+```
+#### Model Composition
+
+A model composition is any model that combines one or more models.
+
+The `t/|` model is constructed with one or more models as arguments. If any of the underlying models can act on a given action,
+the model can act on it, providing that result.
+```clojure
+(t/test-value |-acts-on-first-submodel
+              (t/act (t/| (t/sequential (foo) 1)
+                          (t/sequential (bar) 2))
+                     (foo) :result :_next)
+              :result
+              1)
+(t/test-value |-acts-on-second-submodel
+              (t/act (t/| (t/sequential (foo) 1)
+                          (t/sequential (bar) 2))
+                     (bar) :result :_next)
+              :result
+              2)
+
+```
+When acting on any of its submodels, it evolves that model.
+```clojure
+(t/test-value |-evolves-first-submodel
+              (t/act (t/| (t/sequential (foo) 1)
+                          (t/sequential (bar) 2))
+                     (foo) :_result :next)
+              :next
+              (t/| (t/sequential)
+                   (t/sequential (bar) 2)))
+(t/test-value |-evolves-second-submodel
+              (t/act (t/| (t/sequential (foo) 1)
+                          (t/sequential (bar) 2))
+                     (bar) :_result :next)
+              :next
+              (t/| (t/sequential (foo) 1)
+                   (t/sequential)))
+
+```
+`t/|` is accepting if and only if all of its submodels are accepting.
+```clojure
+(t/test-value |-is-accepting-if-all-submodels-are-accepting
+              (t/is-final (t/| (t/sequential) (t/by-def ())) :final?)
+              :final?
+              true)
+(t/test-value |-is-not-accepting-if-first-submodel-is-not-accepting
+              (t/is-final (t/| (t/sequential (foo) 1) (t/by-def ())) :final?)
+              :final?
+              false)
+(t/test-value |-is-not-accepting-if-second-submodel-is-not-accepting
+              (t/is-final (t/| (t/by-def ()) (t/sequential (foo) 1)) :final?)
+              :final?
+              false)
+
+```
+Now we can combine (almost) all of our model types and simulate the example program.
+```clojure
+(t/test-model example-program-using-all-models
+              (some-state 1)
+              0
+              (t/| (t/by-def (3))
+                   (t/sequential
+                    (input-line) "Muon")))
 ```
 
