@@ -69,17 +69,57 @@
 
 ;; ## QEPL Simulation
 
-;; While the QEPL runs outside the Muon program, we allow for simulating it for testing.
-
-;; ### Models
+;; While the QEPL runs outside the Muon program, Muon does allow for simulating it for testing.
 
 ;; The simulation of the QEPL is based on the notion of a _model_, an object that represents the simulated state of the world
 ;; and determines how expressions are to be evaluated, while simulating side-effects by mutating its own state.
 
-;; A model needs to provide solutions for the `t/handle-expr` and `t/final?` predicates.
-;; `(t/handle-expr :model :expr :result :next-model)` succeeds if `:model` accepts expression `:expr`,
-;; providing `:result` as the value it evaluates to and `:next-model` as the next state to replace `:model`.
-;; `(t/final? :model)` succeeds if `:model` represents a final state, i.e., allows for `p/step` to return `muon/done`.
+;; ### Model Testing
+
+;; `t/test-model` defines tests that test for an expected output given an initial state and a model.
+;; Any such test definition is converted into a corresponding `t/test-value` result.
+;; For example, given the following definition (see [below](#sequential-model) for details about the model in use here):
+(t/test-model my-model-test
+              (>> input-line)
+              "foo"
+              (t/sequential
+               (input-line) "foo"))
+;; The following `t/test-value` is defined:
+(t/test-value my-model-test-defines-a-test-value
+              (t/test-value my-model-test :args ...)
+              :args
+              ((t/qepl-sim (>> input-line) () x (t/sequential
+                                                 (input-line) "foo"))
+               x
+               "foo"))
+
+;; ### Model Debugging
+
+;; The `t/test-model?` predicate has syntax similar to `t/test-model` (with the only difference being the `?`),
+;; but instead of defining a test that succeeds on a successful execution, the test it creates expects failure,
+;; and in case of success it prints the result, which in this case includes the outcome of tracing through the
+;; model.
+
+;; For example, the following definition:
+(t/test-model? my-model-test-debugging
+               some-state
+               some-result
+               some-model)
+
+;; will emit the following test:
+(t/test-value my-model-test-debugging-defines-a-test
+              (test my-model-test-debugging :others ...)
+              :others
+              ((t/qepl-trace some-state some-model () placeholder-for-the-outcome) 0))
+
+;; ### Models
+
+;; A model needs to provide solutions for the `t/act` and `t/is-final` predicates.
+;; `(t/act :model :action :result :next-model)` succeeds if `:model` accepts action `:action`,
+;; providing `:result` as the value it evaluates to and `:next-model` as the evolution of `:model` as a result of the action.
+;; `(t/is-final :model :final?)` succeeds for any model, binding `:final?` to `true` if `:model` represents a final state,
+;; i.e., allows for `p/step` to return `muon/done`. Otherwise, `:final?` is bound to `false` (`t/is-final` always succeeds for
+;; any valid model).
 
 ;; To demonstrate some of the following model types we will consider the following program,
 ;; which asks a user for their name and then greets them.
@@ -111,23 +151,4 @@
                              (strcat "Hello, " "Muon") "Hello, Muon"
                              (print "Hello, Muon") ()
                              (print "Something else...") ())))
-
-;; ### Model Testing
-
-;; As a convenience, the `t/test-model` predicate defines tests that use the `t/qepl-sim` predicate and tests for an expected output.
-;; Any solution to this predicate is converted into a corresponding `t/test-value` result.
-;; For example, given the following definition:
-(t/test-model my-model-test
-              (>> input-line)
-              "foo"
-              (t/sequential
-               (input-line) "foo"))
-;; The following `t/test-value` is defined:
-(t/test-value my-model-test-defines-a-test-value
-              (t/test-value my-model-test :args ...)
-              :args
-              ((t/qepl-sim (>> input-line) () x (t/sequential
-                                                 (input-line) "foo"))
-               x
-               "foo"))
 
