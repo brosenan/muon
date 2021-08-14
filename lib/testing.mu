@@ -8,6 +8,10 @@
     (test-value :name :goal not-a-value :expected))
 (<- (test :name :goal 1)
     (test-value :name :goal :_expected :expected))
+
+(<- (test :name :goal 0)
+    (test-value? :name :goal :_expected :expected))
+
 (<- (test :name :goal 1)
     (test-success :name :goal))
 (<- (test :name :goal 0)
