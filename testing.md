@@ -7,6 +7,7 @@
     * [Models](#models)
       * [Pure Model](#pure-model)
       * [Sequential Model](#sequential-model)
+      * [Definition-Based-Model](#definition-based-model)
 ```clojure
 (ns testing-test
   (require testing t)
@@ -212,5 +213,41 @@ The only accepting state of the model is the one where all its expressions have 
                              (print "Hello, Muon") ()
                              (print "Something else...") ())))
 
+```
+#### Definition-Based Model
+
+`t/sequential` is very strict in the sense that we have to tell it exactly which actions will be requested and
+in which order. Sometimes we wish to be more lenient and not have to explicitly specify the actions or their order.
+We do, however, have to provide results for the actions since they have an effect on the execution.
+
+To address this, `t/defaction` allows us to define a result for a given action. For example, here we define
+the behavior of some of the actions used in the example program.
+```clojure
+(t/defaction (print :_s) ())  ;; print returns () regardless of input.
+(t/defaction (strcat "Hello, " "Muon") "Hello, Muon")
+
+```
+The `t/by-def` model can perform the defined actions, returning the defined results.
+```clojure
+(t/test-value by-def-returns-action-result
+              (t/act t/by-def (strcat "Hello, " "Muon") :result :next)
+              :result
+              "Hello, Muon")
+
+```
+It always transitions to itself.
+```clojure
+(t/test-value by-def-transitions-to-itself
+              (t/act t/by-def (strcat "Hello, " "Muon") :result :next)
+              :next
+              t/by-def)
+
+```
+It is an accepting state.
+```clojure
+(t/test-value by-def-is-accepting
+              (t/is-final t/by-def :final?)
+              :final?
+              true)
 ```
 

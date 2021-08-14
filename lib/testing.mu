@@ -42,3 +42,7 @@
     (test-model? :name :state :expected :model))
 
 (is-final pure true)
+
+(<- (act by-def :action :result by-def)
+    (defaction :action :result))
+(is-final by-def true)
