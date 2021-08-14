@@ -431,8 +431,23 @@ forty-two
       5)
 
 ;; That's it! That's all that's into defining languages in Muon. Well, kinda... at least in principle.
-;; Because Muon is pure, if your language requires any "real" computation such as numeric calculations, string manipulation or user interaction,
+
+;; The technique we have introduced here is called [Big-Step Operational Semantics](https://en.wikipedia.org/wiki/Operational_semantics#Big-step_semantics).
+;; It defines the semantics of some phrase in the language (e.g., a relationship) by considering a single, _big step_ to define the semantics
+;; of the whole thing, which is often done in terms of smaller (but sill arbitrarily big) steps, considering the components of that phrase
+;; (e.g., the `:rel` and `:rels` components in `(-> :rel :rels ...)`).
+
+;; However, because Muon is pure, if your language requires any "real" computation such as numeric calculations, string manipulation or user interaction,
 ;; your language will need to use the [QEPL](muon-clj/qepl.md). To do this, instead of defining the semantics of your langauge in terms of
 ;; some arbitrary predicate you choose (`rel` in our case), you'll need to define the semantics in terms of the `step` predicate queried by the QEPL,
 ;; either directly or indirectly through one of the definition mechanisms provided by other languages (e.g., [defexpr](expr.md#definitions)).
+
+;; This means that instead of using big-step operational semantics, you'll need to use either
+;; [Small-Step Operational Semantics](https://en.wikipedia.org/wiki/Operational_semantics#Small-step_semantics) (when defining `step` solutions directly),
+;; or something more similar to [Denotational Semantics](https://en.wikipedia.org/wiki/Denotational_semantics) when defining your language by
+;; translation to another language, e.g., by defining solutions for `defexpr`.
+
+;; Regardless of the exact method, the general approach remains the same and can be summarized in two steps:
+;; 1. Define the semantics of your "expressions" (e.g., relationships) in terms of an established abstraction (e.g., the `rel` predicate).
+;; 2. Define the definition mechanism by considering for solutions for the former (e.g., using a chain rule).
 the-end
