@@ -40,3 +40,5 @@
 
 (<- (test :name (qepl-trace :state :model () :_outcome) 0)
     (test-model? :name :state :expected :model))
+
+(is-final pure true)

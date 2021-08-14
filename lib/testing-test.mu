@@ -129,10 +129,28 @@
 (p/step (some-state 4) :input (continue (print :input) (some-state 5)))
 (p/step (some-state 5) :input (return 0))
 
+;; #### Pure Model
+
+;; `t/pure` is arguably the simplest possible model. It does not allow any actions to be performed, thus restricting the code
+;; to being purely declarative.
+(t/test-failure pure-does-not-allow-actions
+                (t/act t/pure :_action :_result :_next))
+
+;; It is a final state.
+(t/test-value pure-is-final
+              (t/is-final t/pure :final?)
+              :final?
+              true)
+
+;; In the example above, only `(some-state 5)` is pure.
+(t/test-model some-state-5-is-pure
+              (some-state 5)
+              0
+              t/pure)
+
 ;; #### Sequential Model
 
-;; `t/sequential` is arguably the simplest possible model.
-;; It takes an even number of arguments consisting of (expr, result) pairs
+;; `t/sequential` takes an even number of arguments consisting of (expr, result) pairs
 ;; and expects that the expressions be evaluated in order.
 (t/test-value sequential-model
               (t/qepl-sim (some-state 1) () :output
