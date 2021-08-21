@@ -58,6 +58,16 @@
 (<- (step :f :_input (return :f))
     (defun :f :_params :_exprs ...))
 
+;; if
+(defexpr (if :cond :then :else)
+  (let [(quote :bool) :cond]
+    (select :bool :then :else)))
+
+(defexpr (select true :then :_else)
+  :then)
+(defexpr (select false :_then :else)
+  :else)
+
 ;; Calling quoted function names
 (defexpr ((quote :f) :args ...)
   (:f :args ...))

@@ -6,13 +6,14 @@
     * [Expression Definitions](#expression-definitions)
     * [Function Definitions](#function-definitions)
       * [Bindging Arguments to Parameters](#bindging-arguments-to-parameters)
+  * [Conditionals](#conditionals)
   * [Functional Programming](#functional-programming)
     * [Closures](#closures)
     * [A Note About Lamdas](#a-note-about-lamdas)
 ```clojure
 (ns expr-test
   (require testing t)
-  (require expr ex [quote >> do let defexpr defun partial])
+  (require expr ex [quote >> do let defexpr defun if partial])
   (use proc p [step]))
 
 ```
@@ -253,6 +254,34 @@ list of parameter expressions.
               :result [param1 arg1
                        param2 arg2
                        param3 arg3])
+
+```
+## Conditionals
+
+Similar to Clojure and many other functional programming languages, an `if` expression takes three expressions:
+_condition_, _then_ and _else_. It begins by evaluating the condition. If it evaluates to `true`, the _then_ part
+is being evaluated.
+```clojure
+(t/test-model if-with-true-condition
+              (if (>> some-condition-action)
+                (>> some-then-action)
+                (>> some-else-action))
+              then-result
+              (t/sequential
+               (some-condition-action) true
+               (some-then-action) then-result))
+
+```
+And if it evaluates to `false`, the _else_ part is being evaluated.
+```clojure
+(t/test-model if-with-false-condition
+              (if (>> some-condition-action)
+                (>> some-then-action)
+                (>> some-else-action))
+              else-result
+              (t/sequential
+               (some-condition-action) false
+               (some-else-action) else-result))
 
 ```
 ## Functional Programming
