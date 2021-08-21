@@ -2,7 +2,7 @@
   * [Arithmetic Operators](#arithmetic-operators)
   * [Associativity](#associativity)
 ```clojure
-(ns expr.io-test
+(ns expr.arith-test
   (require testing t)
   (require expr.arith ar [+ - * /])
   (require expr e [defun >> quote])
