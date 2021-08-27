@@ -320,7 +320,7 @@ Similar to Clojure and many other functional programming languages, an `if` expr
 _condition_, _then_ and _else_. It begins by evaluating the condition. If it evaluates to `true`, the _then_ part
 is being evaluated.
 ```clojure
-(t/test-model* if-with-true-condition
+(ex/test-expr if-with-true-condition
                (if (>> some-condition-action)
                  (>> some-then-action)
                  (>> some-else-action))
@@ -332,14 +332,14 @@ is being evaluated.
 ```
 And if it evaluates to `false`, the _else_ part is being evaluated.
 ```clojure
-(t/test-model* if-with-false-condition
-               (if (>> some-condition-action)
-                 (>> some-then-action)
-                 (>> some-else-action))
-               else-result
-               (t/sequential
-                (some-condition-action) false
-                (some-else-action) else-result))
+(ex/test-expr if-with-false-condition
+              (if (>> some-condition-action)
+                (>> some-then-action)
+                (>> some-else-action))
+              else-result
+              (t/sequential
+               (some-condition-action) false
+               (some-else-action) else-result))
 
 ```
 ## Functional Programming

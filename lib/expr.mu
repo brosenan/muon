@@ -105,7 +105,7 @@
 
 ;; if
 (defexpr (if :cond :then :else)
-  (let [(quote :bool) :cond]
+  (let-value [:bool :cond]
     (select :bool :then :else)))
 
 (defexpr (select true :then :_else)
