@@ -1,10 +1,11 @@
 * [Arithmetic](#arithmetic)
   * [Arithmetic Operators](#arithmetic-operators)
+  * [Logical Operators](#logical-operators)
   * [Associativity](#associativity)
 ```clojure
 (ns expr.arith-test
   (require testing t)
-  (require expr.arith ar [+ - * /])
+  (require expr.arith ar [+ - * / and or not])
   (require expr e [defun >> quote])
   (use native n)
   (use proc p [step]))
@@ -66,6 +67,22 @@ The four arithmetic operators are left-associative. See [below](#associativity) 
                 (ar/left-associative *))
 (t/test-success div-is-left-associative
                 (ar/left-associative /))
+
+```
+## Logical Operators
+
+Logical operators work on Boolean values: `true` and `false`.
+
+`not` negates a given value.
+```clojure
+(t/test-model not-true-is-false
+              (not true)
+              false
+              t/pure)
+(t/test-model not-false-is-true
+              (not false)
+              true
+              t/pure)
 
 ```
 ## Associativity

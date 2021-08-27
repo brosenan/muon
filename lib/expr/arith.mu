@@ -1,7 +1,8 @@
 (ns expr.arith
-  (require expr e [defun defexpr >> do let quote])
+  (require expr e [defun defexpr >> do let quote if])
   (require native n))
 
+;; Arithmetic
 (defun + []
   0)
 
@@ -24,6 +25,10 @@
 (left-associative -)
 (left-associative *)
 (left-associative /)
+
+;; Logic operators
+(defun not [:b]
+  (if :b false true))
 
 ;; Associativity
 (<- (defun :f [:x]
