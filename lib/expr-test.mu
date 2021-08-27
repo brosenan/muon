@@ -154,25 +154,22 @@
 
 ;; `defepxr` allows us to define one (new) expression in terms of another.
 ;; It takes a pattern of the expression to be defined and a pattern of the pattern
-;; it would be defined as.
+;; it would be defined as. Both the defined expression and the expression used for defining
+;; it share `:logic-variables` which are bound to sub-expressions.
 
 ;; In the following example we define the `println` expression, which takes one
-;; expression as parameter, evaluates it (using a `let` expression) and invokes
-;; the imaginary `println` action with the result as parameter.
+;; expression as parameter, evaluates it (using a `let-value` expression) and invokes
+;; the fictional `println` action with the result as parameter.
 (defexpr (println :str)
-  (let [(quote :str-val) :str]
+  (let-value [:str-val :str]
     (>> println :str-val)))
 
-;; One thing to note here is the fact that we _unquote_ `:str-val`. This is because
-;; we need it as a value rather than an expression (recall that actions
-;; require values as parameters).
-
 ;; Now we can call the new `println` expression.
-(t/test-model* defexpr-defines-expr
-               (println "foo")
-               ()
-               (t/sequential
-                (println "foo") ()))
+(ex/test-expr defexpr-defines-expr
+              (println "foo")
+              ()
+              (t/sequential
+               (println "foo") ()))
 
 ;; Since `defexpr` takes a pattern of the expression it defines,
 ;; it is very useful for defining variadic expressions.
@@ -184,46 +181,69 @@
     (println :second :rest ...)))
 
 ;; Now we can call `println` with any number of arguments.
-(t/test-model* defexpr-defines-variadic-expr
-               (println "one" "two" "three")
-               ()
-               (t/sequential
-                (println "one") ()
-                (println "two") ()
-                (println "three") ()))
+(ex/test-expr defexpr-defines-variadic-expr
+              (println "one" "two" "three")
+              ()
+              (t/sequential
+               (println "one") ()
+               (println "two") ()
+               (println "three") ()))
+
+;; In comparison to other Lisps, `defexpr` is similar to a macro definition in that it operates at the
+;; expression level. The expression being defined shares the call-site's lexical scope.
+(ex/test-expr defexpr-shares-lexical-scope
+              (let [x "foo"]
+                (println x))
+              ()
+              (t/sequential
+               (println "foo") ()))
+
+;; In the above example, the definition of `println` received the expression `x` as parameter.
+;; Then, `x` was evaluated as part of the expression `println` translated into.
+
+;; Obviosly, this behavior can also be abused, as in the following example.
+(defexpr do-something-surprising
+  (println some-message))
+
+;; In the above definition we defined the expression `do-something-surprising` as a printing of
+;; `some-message`, a variable we did not define in this scope. Now, if we bind `some-message` to a string
+;; `do-something-surprising` will print it.
+(ex/test-expr defexpr-lexical-scope2
+              (let [some-message "don't do this!"]
+                do-something-surprising)
+              ()
+              (t/sequential
+               (println "don't do this!") ()))
 
 ;; ### Function Definitions
 
-;; While similar, `defexpr` defines _expressions_, not _functions_, as they are defined in most
-;; programming languages. Specifically, the evaluation order of the arguments is determined by the body.
-;; and there is no guarantee that the arguments passed to such an expression are evaluated before
-;; the body of the definition.
-
-;; In contrast, `defun` is a more "standard" function definition.
+;; In contrast to `defexpr`, which is comparable with a macro definition, `defun` is a function definition.
 ;; Simlalr to its counterpart in other Lisps, the syntax of `defun` consists of a function name,
-;; a vector of parameters and zero or more expressions acting as the body.
+;; a vector of parameters (symbols, not logic variables) and zero or more expressions acting as the body.
 ;; A call to a function defined using `defun` will always start by evaluating the arguments first,
 ;; and only then will the body be evaluated as well.
 
 ;; In the following example we define two functions. The first is `strcat` which wraps around
 ;; the (imaginary) `strcat` action. It unquotes the parameters to be able to use the plain strings
 ;; in an action.
-(defun strcat [(quote :s1-value) (quote :s2-value)]
-  (>> strcat :s1-value :s2-value))
+(defun strcat [s1 s2]
+  (let-value [:s1 s1
+              :s2 s2]
+             (>> strcat :s1 :s2)))
 
 ;; Then we define the function `greet` which takes a name of a person as parameter and prints a
 ;; greeting for that person.
-(defun greet [:name]
-  (println (strcat "Hello, " :name)))
+(defun greet [name]
+  (println (strcat "Hello, " name)))
 
 ;; Calling this function will first concatenate "Hello, " to the value we give as argument,
 ;; and then prints the resulting string.
-(t/test-model* defun-defines-functions
-               (greet "Muon")
-               ()
-               (t/sequential
-                (strcat "Hello, " "Muon") "Hello, Muon"
-                (println "Hello, Muon") ()))
+(ex/test-expr defun-defines-functions
+              (greet "Muon")
+              ()
+              (t/sequential
+               (strcat "Hello, " "Muon") "Hello, Muon"
+               (println "Hello, Muon") ()))
 
 ;; #### Bindging Arguments to Parameters
 

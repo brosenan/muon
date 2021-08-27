@@ -83,10 +83,11 @@
     (case :expr-outcome
       (return :var) (step (bind (let-value :let-bindings :body ...) :bindngs) () :outcome)
       (continue :action :next) (= :outcome (continue :action (bind (let-value* [:var :next :let-bindings ...] :body ...) :bindngs)))))
+
 ;; defexpr
-(<- (step :expr :input :outcome)
+(<- (step (bind :expr :bindings) :input :outcome)
     (defexpr :expr :body)
-    (step :body :input :outcome))
+    (step (bind :body :bindings) :input :outcome))
 
 ;; bind-args
 
