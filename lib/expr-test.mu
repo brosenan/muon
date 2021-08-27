@@ -1,6 +1,6 @@
 (ns expr-test
   (require testing t)
-  (require expr ex [quote >> do let defexpr defun if partial])
+  (require expr ex [quote >> do let let-value defexpr defun if partial])
   (use proc p [step]))
 
 ;; # expr: A Lisp-like Language
@@ -105,6 +105,43 @@
               (t/by-def (1)))
 
 (t/defaction (get-foo) "foo")
+
+;; `let-value` is similar to `let` with a few differences:
+
+;; 1. It uses `:logic-variables` rather than symbols as the binding variables.
+;; 2. Rather than creating a [binding](#bindings) between the variable and the value, `let-value` actually binds the logic variable to the value.
+;; 3. The logic variable is bound to a _value_ and not an _expression_, making it suitable for use in certain places (e.g., inside [quotes](#quotation-and-self-evaluation)) but not in general expressions.
+
+;; Without bindings, it behaves like a `do`.
+(ex/test-expr let-value-without-bindings
+              (let-value []
+                         (>> do-something)
+                         (>> do-something-else))
+              3
+              (t/sequential
+               (do-something) 2
+               (do-something-else) 3))
+
+(ex/test-expr let-value-evaluates-bindings-in-order
+              (let-value [:foo (>> get-foo)
+                          :bar (>> get-bar)]
+                         (>> do-something))
+              2
+              (t/sequential
+               (get-foo) "foo"
+               (get-bar) "bar"
+               (do-something) 2))
+
+;; `let-value` is very useful for constructing actions
+(ex/test-expr let-value-constructs-actions
+              (let-value [:foo (>> get-foo)
+                          :bar (>> get-bar)]
+                         (>> do-something :foo :bar))
+              2
+              (t/sequential
+               (get-foo) "foo"
+               (get-bar) "bar"
+               (do-something "foo" "bar") 2))
 
 ;; ## Definitions
 

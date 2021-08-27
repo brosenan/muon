@@ -69,6 +69,20 @@
       (return :value) (step (bind (let :let-bindings :body ...) [:var :value :bindngs ...]) () :outcome)
       (continue :action :next) (= :outcome (continue :action (bind (let* [:var :next :let-bindings ...] :body ...) :bindngs)))))
 
+;; let-value
+(<- (step (bind (let-value [] :exprs ...) :bindings) :input :outcome)
+    (step (bind (do :exprs ...) :bindings) :input :outcome))
+(<- (step (bind (let-value [:var :expr :let-bindings ...] :body ...) :bindngs) :input :outcome)
+    (step (bind :expr :bindngs) :input :expr-outcome)
+    (evolve-let-value :expr-outcome :var :let-bindings :body :bindngs :outcome))
+(<- (step (bind (let-value* [:var :expr :let-bindings ...] :body ...) :bindngs) :input :outcome)
+    (step :expr :input :expr-outcome)
+    (evolve-let-value :expr-outcome :var :let-bindings :body :bindngs :outcome))
+
+(<- (evolve-let-value :expr-outcome :var :let-bindings :body :bindngs :outcome)
+    (case :expr-outcome
+      (return :var) (step (bind (let-value :let-bindings :body ...) :bindngs) () :outcome)
+      (continue :action :next) (= :outcome (continue :action (bind (let-value* [:var :next :let-bindings ...] :body ...) :bindngs)))))
 ;; defexpr
 (<- (step :expr :input :outcome)
     (defexpr :expr :body)
