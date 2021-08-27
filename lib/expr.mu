@@ -2,42 +2,72 @@
   (use proc p [step])
   (require types ty)
   (require logic l [case =])
-  (require lists li [concat]))
+  (require lists li [concat])
+  (require testing t))
+
+;; bind
+(<- (step (bind :var :bindings) :_input (return :value))
+    (binding-lookup :bindings :var :value))
+
+(binding-lookup [:var :value :_bindings ...] :var :value)
+(<- (binding-lookup [:_var1 :_value1 :_bindings ...] :var :value)
+    (binding-lookup :_bindings :var :value))
+
+;; test-expr
+(<- (t/test-model :name (bind :expr []) :value :model)
+    (test-expr :name :expr :value :model))
+(<- (t/test-model? :name (bind :expr []) :value :model)
+    (test-expr? :name :expr :value :model))
 
 ;; quote
-(step (quote :x) :_input (return :x))
+(step (bind (quote :x) :_bindings) :_input (return :x))
 
 ;; Literal self-evaluation
-(<- (step :n :_input (return :n))
+(<- (step (bind :x :_bindings) :_input (return :x))
+    (value? :x))
+
+(<- (value? :n)
     (ty/int? :n))
-(<- (step :f :_input (return :f))
+(<- (value? :f)
     (ty/float? :f))
-(<- (step :s :_input (return :s))
+(<- (value? :s)
     (ty/string? :s))
-(<- (step :b :_input (return :b))
+(<- (value? :b)
     (ty/bool? :b))
 
 ;; >>
-(step (>> :action ...) :_input (continue :action input))
-(step input :input (return :input))
+(step (bind (>> :action ...) :bindings) :_input (continue :action (bind input :bindings)))
+(step (bind input :_bindings) :input (return :input))
 
 ;; do
-(step (do) :input (return :input))
-(<- (step (do :first :rest ...) :input :outcome)
+(step (bind (do) :_bindings) :input (return :input))
+(<- (step (bind (do :first :rest ...) :bindings) :input :outcome)
+    (step (bind :first :bindings) :input :first-outcome)
+    (evolve-do :first-outcome :rest :bindings :outcome))
+(<- (step (bind (do* :first :rest ...) :bindings) :input :outcome)
     (step :first :input :first-outcome)
-    (case :first-outcome
-      (continue :first-action :first-next) (= :outcome 
-                                              (continue :first-action (do :first-next :rest ...)))
-      (return :retval) (step (do :rest ...) :retval :outcome)))
+    (evolve-do :first-outcome :rest :bindings :outcome))
+
+(<- (evolve-do :first-outcome :rest :bindings :outcome)
+ (case :first-outcome
+   (continue :first-action :first-next) (= :outcome
+                                           (continue :first-action (bind (do* :first-next :rest ...) :bindings)))
+   (return :retval) (step (bind (do :rest ...) :bindings) :retval :outcome)))
 
 ;; let
-(<- (step (let [] :exprs ...) :input :outcome)
-    (step (do :exprs ...) :input :outcome))
-(<- (step (let [(quote :value) :expr :bindings ...] :body ...) :input :outcome)
+(<- (step (bind (let [] :exprs ...) :bindings) :input :outcome)
+    (step (bind (do :exprs ...) :bindings) :input :outcome))
+(<- (step (bind (let [:var :expr :let-bindings ...] :body ...) :bindngs) :input :outcome)
+    (step (bind :expr :bindngs) :input :expr-outcome)
+    (evolve-let :expr-outcome :var :let-bindings :body :bindngs :outcome))
+(<- (step (bind (let* [:var :expr :let-bindings ...] :body ...) :bindngs) :input :outcome)
     (step :expr :input :expr-outcome)
+    (evolve-let :expr-outcome :var :let-bindings :body :bindngs :outcome))
+
+(<- (evolve-let :expr-outcome :var :let-bindings :body :bindngs :outcome)
     (case :expr-outcome
-      (return :value) (step (let :bindings :body ...) () :outcome)
-      (continue :action :next) (= :outcome (continue :action (let [(quote :value) :next :bindings ...] :body ...)))))
+      (return :value) (step (bind (let :let-bindings :body ...) [:var :value :bindngs ...]) () :outcome)
+      (continue :action :next) (= :outcome (continue :action (bind (let* [:var :next :let-bindings ...] :body ...) :bindngs)))))
 
 ;; defexpr
 (<- (step :expr :input :outcome)

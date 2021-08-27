@@ -10,6 +10,8 @@
   * [Functional Programming](#functional-programming)
     * [Closures](#closures)
     * [A Note About Lamdas](#a-note-about-lamdas)
+  * [Under the Hood](#under-the-hood)
+    * [Bindings](#bindings)
 ```clojure
 (ns expr-test
   (require testing t)
@@ -33,7 +35,7 @@ of expressions.
 
 As in most Lisps, the `quote` expression evaluates to its (one and only) argument.
 ```clojure
-(t/test-model quote-evaluates-to-argument
+(ex/test-expr quote-evaluates-to-argument
               (quote (foo bar)) ;; This expression
               (foo bar)         ;; evaluates to this value
               t/pure)   ;; by computing these steps (none).
@@ -41,13 +43,13 @@ As in most Lisps, the `quote` expression evaluates to its (one and only) argumen
 ```
 Literal types do not need to be quoted. They evaluate to themselves.
 ```clojure
-(t/test-model int-evaluates-to-itself
+(ex/test-expr int-evaluates-to-itself
               42 42 t/pure)
-(t/test-model float-evaluates-to-itself
+(ex/test-expr float-evaluates-to-itself
               3.14 3.14 t/pure)
-(t/test-model string-evaluates-to-itself
+(ex/test-expr string-evaluates-to-itself
               "foo" "foo" t/pure)
-(t/test-model bool-evaluates-to-itself
+(ex/test-expr bool-evaluates-to-itself
               true true t/pure)
 
 ```
@@ -67,11 +69,11 @@ An expression that uses the `>>` operator evaluates to the value returned by the
 actions are actually used. Documentation on which actions are actually available is TBD.
 ```clojure
 (t/test-value >>-calls-an-action
-              (step (>> some-action 1 2 3) () (continue :action :_next))
+              (step (ex/bind (>> some-action 1 2 3) [some bindings]) () (continue :action :_next))
               :action
               (some-action 1 2 3))
 
-(t/test-model >>-returns-action-result
+(ex/test-expr >>-returns-action-result
               (>> the-big-question-of "life" "universe" "everything")
               42
               (t/sequential
@@ -83,11 +85,11 @@ actions are actually used. Documentation on which actions are actually available
 The `do` expression takes zero or more sub-expressions and evaluates them in-order.
 It returns the value of the last expression.
 ```clojure
-(t/test-model do-with-no-subexprs
+(ex/test-expr do-with-no-subexprs
               (do)
               ()
               t/pure)
-(t/test-model do-with-subexprs
+(ex/test-expr do-with-subexprs
               (do
                 (>> do-something)
                 (>> do-something-else))
@@ -100,7 +102,7 @@ It returns the value of the last expression.
 The `let` expression takes a vector of bindings (variable-expression pairs) and zero or more expressions.
 With no bindings, it works exactly like a `do` expression.
 ```clojure
-(t/test-model let-without-bindings
+(ex/test-expr let-without-bindings
               (let []
                 (>> do-something)
                 (>> do-something-else))
@@ -112,9 +114,9 @@ With no bindings, it works exactly like a `do` expression.
 ```
 Given bindings, the bound expressions are being evaluated in order before evaluating the body.
 ```clojure
-(t/test-model let-evaluates-bindings-in-order
-              (let [:foo (>> get-foo)
-                    :bar (>> get-bar)]
+(ex/test-expr let-evaluates-bindings-in-order
+              (let [foo (>> get-foo)
+                    bar (>> get-bar)]
                 (>> do-something))
               2
               (t/sequential
@@ -125,24 +127,13 @@ Given bindings, the bound expressions are being evaluated in order before evalua
 ```
 The variable in each pair is bound to the result of evaluating the expression.
 ```clojure
-(t/test-model let-binds-vars-to-expr-results
-              (let [:foo (>> get-foo)]
-                :foo)
+(ex/test-expr let-binds-vars-to-expr-results
+              (let [foo (>> get-foo)]
+                foo)
               "foo"
-              (t/sequential
-               (get-foo) "foo"))
-
-```
-The values bound are quoted, so that they can be used as expressions even if the value returned 
-by the expression is not self-evaluating.
-```clojure
-(t/test-model let-binds-vars-to-quoted-value
-              (let [:list (>> get-some-list)]
-                :list)
-              (1 2 3)
               (t/by-def (1)))
 
-(t/defaction (get-some-list) (1 2 3))
+(t/defaction (get-foo) "foo")
 
 ```
 ## Definitions
@@ -173,11 +164,11 @@ require values as parameters).
 
 Now we can call the new `println` expression.
 ```clojure
-(t/test-model defexpr-defines-expr
-              (println "foo")
-              ()
-              (t/sequential
-               (println "foo") ()))
+(t/test-model* defexpr-defines-expr
+               (println "foo")
+               ()
+               (t/sequential
+                (println "foo") ()))
 
 ```
 Since `defexpr` takes a pattern of the expression it defines,
@@ -193,13 +184,13 @@ two arguments and above.
 ```
 Now we can call `println` with any number of arguments.
 ```clojure
-(t/test-model defexpr-defines-variadic-expr
-              (println "one" "two" "three")
-              ()
-              (t/sequential
-               (println "one") ()
-               (println "two") ()
-               (println "three") ()))
+(t/test-model* defexpr-defines-variadic-expr
+               (println "one" "two" "three")
+               ()
+               (t/sequential
+                (println "one") ()
+                (println "two") ()
+                (println "three") ()))
 
 ```
 ### Function Definitions
@@ -233,12 +224,12 @@ greeting for that person.
 Calling this function will first concatenate "Hello, " to the value we give as argument,
 and then prints the resulting string.
 ```clojure
-(t/test-model defun-defines-functions
-              (greet "Muon")
-              ()
-              (t/sequential
-               (strcat "Hello, " "Muon") "Hello, Muon"
-               (println "Hello, Muon") ()))
+(t/test-model* defun-defines-functions
+               (greet "Muon")
+               ()
+               (t/sequential
+                (strcat "Hello, " "Muon") "Hello, Muon"
+                (println "Hello, Muon") ()))
 
 ```
 #### Bindging Arguments to Parameters
@@ -262,26 +253,26 @@ Similar to Clojure and many other functional programming languages, an `if` expr
 _condition_, _then_ and _else_. It begins by evaluating the condition. If it evaluates to `true`, the _then_ part
 is being evaluated.
 ```clojure
-(t/test-model if-with-true-condition
-              (if (>> some-condition-action)
-                (>> some-then-action)
-                (>> some-else-action))
-              then-result
-              (t/sequential
-               (some-condition-action) true
-               (some-then-action) then-result))
+(t/test-model* if-with-true-condition
+               (if (>> some-condition-action)
+                 (>> some-then-action)
+                 (>> some-else-action))
+               then-result
+               (t/sequential
+                (some-condition-action) true
+                (some-then-action) then-result))
 
 ```
 And if it evaluates to `false`, the _else_ part is being evaluated.
 ```clojure
-(t/test-model if-with-false-condition
-              (if (>> some-condition-action)
-                (>> some-then-action)
-                (>> some-else-action))
-              else-result
-              (t/sequential
-               (some-condition-action) false
-               (some-else-action) else-result))
+(t/test-model* if-with-false-condition
+               (if (>> some-condition-action)
+                 (>> some-then-action)
+                 (>> some-else-action))
+               else-result
+               (t/sequential
+                (some-condition-action) false
+                (some-else-action) else-result))
 
 ```
 ## Functional Programming
@@ -293,10 +284,10 @@ by placing the name as a first element in a list.
 However, for this to be convenient, function names should be self-evaluating.
 For example, given the above definition of `greet`, the symbol `greet` evaluates to itself.
 ```clojure
-(t/test-model defun-makes-function-name-self-evaluate
-              greet
-              greet
-              t/pure)
+(t/test-model* defun-makes-function-name-self-evaluate
+               greet
+               greet
+               t/pure)
 
 ```
 Now we can define a function that takes a function name as parameter and calls it with some
@@ -305,22 +296,22 @@ arguments.
 (defun with-muon [:f]
   (:f "Muon"))
 
-(t/test-model call-with-function-name
-              (with-muon greet)
-              ()
-              (t/sequential
-               (strcat "Hello, " "Muon") "Hello, Muon"
-               (println "Hello, Muon") ()))
+(t/test-model* call-with-function-name
+               (with-muon greet)
+               ()
+               (t/sequential
+                (strcat "Hello, " "Muon") "Hello, Muon"
+                (println "Hello, Muon") ()))
 
 ```
 Note that for this to work we needed to make `((quote foo) args ...)` be accepted as `(foo args ...)`.
 ```clojure
-(t/test-model quoted-function
-              ((quote greet) "Muon")
-              ()
-              (t/sequential
-               (strcat "Hello, " "Muon") "Hello, Muon"
-               (println "Hello, Muon") ()))
+(t/test-model* quoted-function
+               ((quote greet) "Muon")
+               ()
+               (t/sequential
+                (strcat "Hello, " "Muon") "Hello, Muon"
+                (println "Hello, Muon") ()))
 
 ```
 ### Closures
@@ -333,25 +324,25 @@ In the following example we call `partial` with some function name and two calls
 to the fictional `input-line` action.
 The actions are performed before returning the closure.
 ```clojure
-(t/test-model partial-returns-closure
-              (partial myfunc (>> input-line) (>> input-line))
-              (ex/closure myfunc (quote "foo") (quote "bar"))
-              (t/sequential
-               (input-line) "foo"
-               (input-line) "bar"))
+(t/test-model* partial-returns-closure
+               (partial myfunc (>> input-line) (>> input-line))
+               (ex/closure myfunc (quote "foo") (quote "bar"))
+               (t/sequential
+                (input-line) "foo"
+                (input-line) "bar"))
 
 ```
 A closure can be used in place of a function name as the first element of a list expression.
 In such a case, the function named by the closure will be evaluated, with a concatenation of
 the colsure arguments with the arguments given as the rest of the list as arguments to the function.
 ```clojure
-(t/test-model closure-call
-              ((ex/closure println (quote "foo") (quote "bar")) "baz")
-              ()
-              (t/sequential
-               (println "foo") ()
-               (println "bar") ()
-               (println "baz") ()))
+(t/test-model* closure-call
+               ((ex/closure println (quote "foo") (quote "bar")) "baz")
+               ()
+               (t/sequential
+                (println "foo") ()
+                (println "bar") ()
+                (println "baz") ()))
 
 ```
 Combining the two elements, we can have higher-order functions, ones that receive and return functions.
@@ -366,12 +357,12 @@ concatenates the two.
 ```
 Now we can use the previously-defined `with-muon` to do what we want:
 ```clojure
-(t/test-model partial-used-to-greet
-              (println (with-muon (add-prefix "Hello, ")))
-              ()
-              (t/sequential
-               (strcat "Hello, " "Muon") "Hello, Muon"
-               (println "Hello, Muon") ()))
+(t/test-model* partial-used-to-greet
+               (println (with-muon (add-prefix "Hello, ")))
+               ()
+               (t/sequential
+                (strcat "Hello, " "Muon") "Hello, Muon"
+                (println "Hello, Muon") ()))
 
 ```
 ### A Note About Lamdas
@@ -409,10 +400,10 @@ Next, we will define an invocation of this lambda by converting the invocation t
 ```
 Now we can use lambdas... but only once per lambda.
 ```clojure
-(t/test-model lambda-use-once
-              (with-muon (lambda [:who] (println (strcat "Hello, " :who))))
-              ()
-              (t/by-def (2)))
+(t/test-model* lambda-use-once
+               (with-muon (lambda [:who] (println (strcat "Hello, " :who))))
+               ()
+               (t/by-def (2)))
 
 (t/defaction (strcat "Hello, " "Muon") "Hello, Muon")
 (t/defaction (println :_s) ())
@@ -429,5 +420,44 @@ But the same lambda cannot be used more than once (with different arguments):
                  (t/by-def (4))))
 
 (t/defaction (strcat "Hello, " "World") "Hello, World")
+
+```
+## Under the Hood
+
+### Bindings
+
+A binding consists of an expression and an associated vector of _variable bindings_.
+These variable bingins consist of a symbol representing the variable (not to be confused with a `:logic-variable`),
+and a value associated with this variable.
+
+Variables evaluate to their bound value within a binding.
+```clojure
+(t/test-model bind-evaluates-first-var-to-value
+              (ex/bind x [x 42
+                          y 74])
+              42
+              t/pure)
+(t/test-model bind-evaluates-other-var-to-value
+              (ex/bind x [y 74
+                          x 42])
+              42
+              t/pure)
+
+```
+Expressions do not stand on their own, but rather require binding to be evaluated.
+To ease testing of expressions (i.e., make it so that we do not have to provide the binding every time),
+we introduce the `test-expr` test definition. For example:
+```clojure
+(ex/test-expr int-evaluates-to-itself
+              42 42 t/pure)
+
+```
+This definition defines a corresponding `t/test-model`:
+```clojure
+(t/test-value test-expr-defines-test-model
+              (t/test-model int-evaluates-to-itself :args ...)
+              :args
+              ((ex/bind 42 []) 42 t/pure))
+the-end
 ```
 
