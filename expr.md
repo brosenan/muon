@@ -1,6 +1,7 @@
 * [expr: A Lisp-like-Language](#expr:-a-lisp-like-language)
   * [Quotation and Self Evaluation](#quotation-and-self-evaluation)
   * [Actions](#actions)
+  * [List Construction](#list-construction)
   * [Control Flow](#control-flow)
   * [Definitions](#definitions)
     * [Expression Definitions](#expression-definitions)
@@ -15,7 +16,7 @@
 ```clojure
 (ns expr-test
   (require testing t)
-  (require expr ex [quote >> do let let-value defexpr defun if partial])
+  (require expr ex [quote >> list do let let-value defexpr defun if partial])
   (use proc p [step]))
 
 ```
@@ -80,6 +81,19 @@ actions are actually used. Documentation on which actions are actually available
                (the-big-question-of "life" "universe" "everything") 42))
 
 ```
+## List Construction
+
+A `list` expression takes zero or more expressions as arguments, evaluates them and returns a list of their respective values.
+```clojure
+(ex/test-expr list-creates-list
+              (list (>> get-foo) (>> get-bar))
+              ("foo" "bar")
+              (t/by-def (2)))
+
+(t/defaction (get-foo) "foo")
+(t/defaction (get-bar) "bar")
+
+```
 ## Control Flow
 
 The `do` expression takes zero or more sub-expressions and evaluates them in-order.
@@ -132,8 +146,6 @@ The variable in each pair is bound to the result of evaluating the expression.
                 foo)
               "foo"
               (t/by-def (1)))
-
-(t/defaction (get-foo) "foo")
 
 ```
 `let-value` is similar to `let` with a few differences:

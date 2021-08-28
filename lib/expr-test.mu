@@ -1,6 +1,6 @@
 (ns expr-test
   (require testing t)
-  (require expr ex [quote >> do let let-value defexpr defun if partial])
+  (require expr ex [quote >> list do let let-value defexpr defun if partial])
   (use proc p [step]))
 
 ;; # expr: A Lisp-like Language
@@ -58,6 +58,17 @@
               (t/sequential
                (the-big-question-of "life" "universe" "everything") 42))
 
+;; ## List Construction
+
+;; A `list` expression takes zero or more expressions as arguments, evaluates them and returns a list of their respective values.
+(ex/test-expr list-creates-list
+              (list (>> get-foo) (>> get-bar))
+              ("foo" "bar")
+              (t/by-def (2)))
+
+(t/defaction (get-foo) "foo")
+(t/defaction (get-bar) "bar")
+
 ;; ## Control Flow
 
 ;; The `do` expression takes zero or more sub-expressions and evaluates them in-order.
@@ -103,8 +114,6 @@
                 foo)
               "foo"
               (t/by-def (1)))
-
-(t/defaction (get-foo) "foo")
 
 ;; `let-value` is similar to `let` with a few differences:
 

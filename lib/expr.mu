@@ -89,8 +89,15 @@
     (defexpr :expr :body)
     (step (bind :body :bindings) :input :outcome))
 
-;; bind-args
+;; list
+(defexpr (list)
+  (quote ()))
+(defexpr (list :arg :args ...)
+  (let-value [:head :arg
+              :tail (list :args ...)]
+             (quote (:head :tail ...))))
 
+;; bind-args
 (bind-args [] () [])
 (<- (bind-args [:param :params ...] (:arg :args ...) [:param :arg :bindings ...])
     (bind-args :params :args :bindings))
