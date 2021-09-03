@@ -329,9 +329,14 @@
               (t/sequential
                (do-something "FOO" "BAR" "baz") ()))
 
-(t/defaction (strcat "Hello, " "Muon") "Hello, Muon")
-(t/defaction (println :_s) ())
-(t/defaction (strcat "Hello, " "World") "Hello, World")
+;; `defun` itself is defined in terms of lambdas:
+(ex/test-expr defun-uses-lambda
+              greet
+              (ex/closure [name] 
+                          (do 
+                            (println (strcat "Hello, " name))) 
+                          [])
+              t/pure)
 
 ;; ## Under the Hood
 

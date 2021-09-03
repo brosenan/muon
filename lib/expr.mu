@@ -107,12 +107,9 @@
     (bind-args :params :args :end :bindings))
 
 ;; defun
-(<- (defexpr (:f :args ...)
-      (let :bindings :exprs ...))
-    (defun :f :params :exprs ...)
-    (bind-args :params :args :bindings))
-(<- (step :f :_input (return :f))
-    (defun :f :_params :_exprs ...))
+(<- (defexpr :f
+      (lambda :params (do :exprs ...)))
+    (defun :f :params :exprs ...))
 
 ;; if
 (defexpr (if :cond :then :else)
