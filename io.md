@@ -3,6 +3,7 @@
 ```clojure
 (ns expr.io-test
   (require testing t)
+  (require expr ex)
   (require expr.io io)
   (use native.io nio))
 
@@ -15,7 +16,7 @@ This module provides functions for performing input and output operations.
 
 `println` takes zero or more strings, concatenates them and prints them.
 ```clojure
-(t/test-model println-with-one-arg
+(ex/test-expr println-with-one-arg
               (io/println "hello, world")
               ()
               (t/sequential

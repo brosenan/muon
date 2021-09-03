@@ -1,5 +1,6 @@
 (ns expr.io-test
   (require testing t)
+  (require expr ex)
   (require expr.io io)
   (use native.io nio))
 
@@ -10,7 +11,7 @@
 ;; ## Console Input and Output
 
 ;; `println` takes zero or more strings, concatenates them and prints them.
-(t/test-model println-with-one-arg
+(ex/test-expr println-with-one-arg
               (io/println "hello, world")
               ()
               (t/sequential
