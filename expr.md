@@ -8,15 +8,13 @@
     * [Function Definitions](#function-definitions)
       * [Bindging Arguments to Parameters](#bindging-arguments-to-parameters)
   * [Conditionals](#conditionals)
-  * [Functional Programming](#functional-programming)
-    * [Closures](#closures)
-    * [A Note About Lamdas](#a-note-about-lamdas)
+  * [Lambdas](#lambdas)
   * [Under the Hood](#under-the-hood)
     * [Bindings](#bindings)
 ```clojure
 (ns expr-test
   (require testing t)
-  (require expr ex [quote >> list do let let-value defexpr defun if partial])
+  (require expr ex [quote >> list do let let-value defexpr defun if lambda])
   (use proc p [step]))
 
 ```
@@ -354,150 +352,51 @@ And if it evaluates to `false`, the _else_ part is being evaluated.
                (some-else-action) else-result))
 
 ```
-## Functional Programming
+## Lambdas
 
-To support functional programming we need to allow functions to be first-class values.
-We already use pattern matching on the function name to make function calls,
-so passing a function name to a function can allow that function to call it
-by placing the name as a first element in a list.
-However, for this to be convenient, function names should be self-evaluating.
-For example, given the above definition of `greet`, the symbol `greet` evaluates to itself.
+A `labmda` expression takes a parameter list and an expression and creates a `closure` which stores the parameter list,
+the expression and the local bindings as of the creation of the lambda.
 ```clojure
-(t/test-model* defun-makes-function-name-self-evaluate
-               greet
-               greet
-               t/pure)
+(ex/test-expr lambda-creates-closure
+              (let [baz "baz"]
+                (lambda [foo bar] (>> do-something foo bar baz)))
+              (ex/closure [foo bar] (>> do-something foo bar baz) [baz "baz"])
+              t/pure)
 
 ```
-Now we can define a function that takes a function name as parameter and calls it with some
-arguments.
+A lambda can be used in place of a function (a first element in a list expression).
 ```clojure
-(defun with-muon [:f]
-  (:f "Muon"))
-
-(t/test-model* call-with-function-name
-               (with-muon greet)
-               ()
-               (t/sequential
-                (strcat "Hello, " "Muon") "Hello, Muon"
-                (println "Hello, Muon") ()))
+(ex/test-expr labmda-call
+              (let [f (let [baz "baz"]
+                        (lambda [foo bar]
+                                (let-value [:foo foo
+                                            :bar bar
+                                            :baz baz]
+                                           (>> do-something :foo :bar :baz))))]
+                (f "foo" "bar"))
+              ()
+              (t/sequential
+               (do-something "foo" "bar" "baz") ()))
 
 ```
-Note that for this to work we needed to make `((quote foo) args ...)` be accepted as `(foo args ...)`.
+The arguments to a lambda are evaluated using the bindings at the call site.
 ```clojure
-(t/test-model* quoted-function
-               ((quote greet) "Muon")
-               ()
-               (t/sequential
-                (strcat "Hello, " "Muon") "Hello, Muon"
-                (println "Hello, Muon") ()))
-
-```
-### Closures
-
-A closure is a combination of a function to be called with _some_ of its arguments.
-The `partial` function takes a function name and zero or more arguments for it
-and returns a closure term, containing the function name and the argument values.
-
-In the following example we call `partial` with some function name and two calls
-to the fictional `input-line` action.
-The actions are performed before returning the closure.
-```clojure
-(t/test-model* partial-returns-closure
-               (partial myfunc (>> input-line) (>> input-line))
-               (ex/closure myfunc (quote "foo") (quote "bar"))
-               (t/sequential
-                (input-line) "foo"
-                (input-line) "bar"))
-
-```
-A closure can be used in place of a function name as the first element of a list expression.
-In such a case, the function named by the closure will be evaluated, with a concatenation of
-the colsure arguments with the arguments given as the rest of the list as arguments to the function.
-```clojure
-(t/test-model* closure-call
-               ((ex/closure println (quote "foo") (quote "bar")) "baz")
-               ()
-               (t/sequential
-                (println "foo") ()
-                (println "bar") ()
-                (println "baz") ()))
-
-```
-Combining the two elements, we can have higher-order functions, ones that receive and return functions.
-
-In the following example we will use both to eventually print "Hello, Muon".
-First, the `add-prefix` function takes a string and returns a function that takes another string and
-concatenates the two.
-```clojure
-(defun add-prefix [:prefix]
-  (partial strcat :prefix))
-
-```
-Now we can use the previously-defined `with-muon` to do what we want:
-```clojure
-(t/test-model* partial-used-to-greet
-               (println (with-muon (add-prefix "Hello, ")))
-               ()
-               (t/sequential
-                (strcat "Hello, " "Muon") "Hello, Muon"
-                (println "Hello, Muon") ()))
-
-```
-### A Note About Lamdas
-
-A reader may wonder, at this point, why we haven't introduced lambdas. After all, they are considered the
- hallmark of functional programming languages.
-While there are a few different ways to implement lambdas in Muon, none of them is as simple as the
-features we have described so far.
-
-To understand why this is, we need to understand how Muon, as a logic-programming language, treats variables.
-Logic variables (e.g., `:var`) represent _unknowns_. This means that each variable actually holds one value,
-we just don't know what it is.
-
-Every time a computation considers a statement (e.g., a `defun` or `defexpr`), it takes its variables to be
-_fresh_, meaning that the values they can take are independent of any past values other invocations of the
-same statement were given.
-
-However, a lambda is different. A lambda is a _term_, not a statement. Once created, we want to use it and often,
-reuse it with different values. Unfortunately, once we "uncover" the value of an "unknown", it cannot be uncovered.
-In other words, the concept of an unknown, which works well for definitions, doesn't work well for lambdas.
-
-To demonstrate this we will define our own concept of a lambda, the way it should intuitively be defined.
-First we will make it self-evaluate, so it can be used as an expression.
-```clojure
-(defexpr (lambda :params :body ...)
-  (quote (lambda :params :body ...)))
-
-```
-Next, we will define an invocation of this lambda by converting the invocation to a `let` expression.
-```clojure
-(<- (defexpr ((lambda :params :body ...) :args ...)
-      (let :bindings :body ...))
-    (ex/bind-args :params :args :bindings))
-
-```
-Now we can use lambdas... but only once per lambda.
-```clojure
-(t/test-model* lambda-use-once
-               (with-muon (lambda [:who] (println (strcat "Hello, " :who))))
-               ()
-               (t/by-def (2)))
+(ex/test-expr labmda-call-computes-args
+              (let [f (let [baz "baz"]
+                        (lambda [foo bar]
+                                (let-value [:foo foo
+                                            :bar bar
+                                            :baz baz]
+                                           (>> do-something :foo :bar :baz))))
+                    foo "FOO"
+                    bar "BAR"]
+                (f foo bar))
+              ()
+              (t/sequential
+               (do-something "FOO" "BAR" "baz") ()))
 
 (t/defaction (strcat "Hello, " "Muon") "Hello, Muon")
 (t/defaction (println :_s) ())
-```
-But the same lambda cannot be used more than once (with different arguments):
-```clojure
-(t/test-failure lambda-use-twice
-                (t/qepl-sim
-                 (let [:greeter (lambda [:who] (println (strcat "Hello, " :who)))]
-                   (:greeter "World")
-                   (:greeter "Muon"))
-                 ()
-                 ()
-                 (t/by-def (4))))
-
 (t/defaction (strcat "Hello, " "World") "Hello, World")
 
 ```

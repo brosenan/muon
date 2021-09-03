@@ -102,6 +102,10 @@
 (<- (bind-args [:param :params ...] (:arg :args ...) [:param :arg :bindings ...])
     (bind-args :params :args :bindings))
 
+(bind-args [] () :end :end)
+(<- (bind-args [:param :params ...] (:arg :args ...) :end [:param :arg :bindings ...])
+    (bind-args :params :args :end :bindings))
+
 ;; defun
 (<- (defexpr (:f :args ...)
       (let :bindings :exprs ...))
@@ -120,17 +124,12 @@
 (defexpr (select false :_then :else)
   :else)
 
-;; Calling quoted function names
-(defexpr ((quote :f) :args ...)
-  (:f :args ...))
+(step (bind (lambda :params :expr) :bindings) :_input 
+      (return (closure :params :expr :bindings)))
 
-;; partial and closure
-(defexpr (partial :func :arg :args ...)
-  (let [:arg-val :arg
-        (quote (closure :_func1 :arg-vals ...)) (partial :func :args ...)]
-    (quote (closure :func :arg-val :arg-vals ...))))
-(defexpr (partial :func)
-  (quote (closure :func)))
-(<- (defexpr ((closure :f :closure-args ...) :args ...)
-      (:f :all-args ...))
-    (concat :closure-args :args :all-args))
+(<- (step (bind (:f :args ...) :call-bindings) :input :outcome)
+    (step (bind :f :call-bindings) :input (return (closure :params :expr :closure-bindings)))
+    (bind-args :params :arg-vals :closure-bindings :func-bindings)
+    (step (bind (let-value [:arg-vals (list :args ...)] 
+                           (do* (bind :expr :func-bindings)))
+                :call-bindings) :_input :outcome))
