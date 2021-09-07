@@ -84,6 +84,22 @@
       (return :var) (step (bind (let-value :let-bindings :body ...) :bindngs) () :outcome)
       (continue :action :next) (= :outcome (continue :action (bind (let-value* [:var :next :let-bindings ...] :body ...) :bindngs)))))
 
+;; with
+(<- (step (bind (with [] :expr) :bindings) :input :outcome)
+    (step (bind :expr :bindings) :input :outcome))
+(<- (step (bind (with [(let :var :let-expr) :clauses ...] :expr) :bindings) :input :outcome)
+    (step (bind :let-expr :bindings) :input :expr-outcome)
+    (case :expr-outcome
+      (return :var) (step (bind (with :clauses :expr) :bindings) () :outcome)
+      (continue :action :next) (= :outcome (continue :action
+                                                     (bind
+                                                      (with [(let :var (do* :next)) :clauses ...]
+                                                            :expr) 
+                                                      :bindings)))))
+(<- (step (bind (with [(where :goal) :clauses ...] :expr) :bindings) :input :outcome)
+    :goal
+    (step (bind (with :clauses :expr) :bindings) :input :outcome))
+
 ;; defexpr
 (<- (step (bind :expr :bindings) :input :outcome)
     (defexpr :expr :body)

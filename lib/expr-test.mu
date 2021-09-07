@@ -1,6 +1,7 @@
 (ns expr-test
   (require testing t)
-  (require expr ex [quote >> list do let let-value defexpr defun if lambda])
+  (require expr ex [quote >> list do let let-value defexpr defun if lambda with where])
+  (require logic l [=])
   (use proc p [step]))
 
 ;; # expr: A Lisp-like Language
@@ -152,6 +153,33 @@
                (get-bar) "bar"
                (do-something "foo" "bar") 2))
 
+;; A `with` expression allows for using logic within the evaluation of an expression.
+;; It takes a vector of _clauses_, which may either be `let` or `where` clauses,
+;; and a single expression which will be evaluated in the end.
+
+;; Without clauses, the `with` expression evaluates to its underlying expression.
+(ex/test-expr with-without-clauses
+              (let [x 42]
+                (with [] x))
+              42
+              t/pure)
+
+;; A `let` clause takes a _logic_ variable and an expression. It evaluates the expression
+;; and binds the variable to the value.
+(ex/test-expr with-with-a-let-clause
+              (with [(let :x (>> the-answer))] :x)
+              42
+              (t/sequential
+               (the-answer) 42))
+
+;; A `where` clause applies the underlying logic goal. It is assumed that this goal succeeds deterministically.
+(ex/test-expr with-with-a-where-clause
+              (with [(let :x (>> the-answer))
+                     (where (= :y :x))] :y)
+              42
+              (t/sequential
+               (the-answer) 42))
+
 ;; ## Definitions
 
 ;; In this section we describe the ways in which new expression types can be introduced.
@@ -171,7 +199,7 @@
 ;; the fictional `println` action with the result as parameter.
 (defexpr (println :str)
   (let-value [:str-val :str]
-    (>> println :str-val)))
+             (>> println :str-val)))
 
 ;; Now we can call the new `println` expression.
 (ex/test-expr defexpr-defines-expr
@@ -273,13 +301,13 @@
 ;; _condition_, _then_ and _else_. It begins by evaluating the condition. If it evaluates to `true`, the _then_ part
 ;; is being evaluated.
 (ex/test-expr if-with-true-condition
-               (if (>> some-condition-action)
-                 (>> some-then-action)
-                 (>> some-else-action))
-               then-result
-               (t/sequential
-                (some-condition-action) true
-                (some-then-action) then-result))
+              (if (>> some-condition-action)
+                (>> some-then-action)
+                (>> some-else-action))
+              then-result
+              (t/sequential
+               (some-condition-action) true
+               (some-then-action) then-result))
 
 ;; And if it evaluates to `false`, the _else_ part is being evaluated.
 (ex/test-expr if-with-false-condition
@@ -332,9 +360,9 @@
 ;; `defun` itself is defined in terms of lambdas:
 (ex/test-expr defun-uses-lambda
               greet
-              (ex/closure [name] 
-                          (do 
-                            (println (strcat "Hello, " name))) 
+              (ex/closure [name]
+                          (do
+                            (println (strcat "Hello, " name)))
                           [])
               t/pure)
 
