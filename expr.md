@@ -14,7 +14,7 @@
 ```clojure
 (ns expr-test
   (require testing t)
-  (require expr ex [quote >> list do let let-value defexpr defun if lambda with where])
+  (require expr ex [quote >> list do let defexpr defun if lambda with where])
   (require logic l [=])
   (use proc p [step]))
 
@@ -147,47 +147,6 @@ The variable in each pair is bound to the result of evaluating the expression.
               (t/by-def (1)))
 
 ```
-`let-value` is similar to `let` with a few differences:
-
-1. It uses `:logic-variables` rather than symbols as the binding variables.
-2. Rather than creating a [binding](#bindings) between the variable and the value, `let-value` actually binds the logic variable to the value.
-3. The logic variable is bound to a _value_ and not an _expression_, making it suitable for use in certain places (e.g., inside [quotes](#quotation-and-self-evaluation)) but not in general expressions.
-
-Without bindings, it behaves like a `do`.
-```clojure
-(ex/test-expr let-value-without-bindings
-              (let-value []
-                         (>> do-something)
-                         (>> do-something-else))
-              3
-              (t/sequential
-               (do-something) 2
-               (do-something-else) 3))
-
-(ex/test-expr let-value-evaluates-bindings-in-order
-              (let-value [:foo (>> get-foo)
-                          :bar (>> get-bar)]
-                         (>> do-something))
-              2
-              (t/sequential
-               (get-foo) "foo"
-               (get-bar) "bar"
-               (do-something) 2))
-
-```
-`let-value` is very useful for constructing actions
-```clojure
-(ex/test-expr let-value-constructs-actions
-              (let-value [:foo (>> get-foo)
-                          :bar (>> get-bar)]
-                         (>> do-something :foo :bar))
-              2
-              (t/sequential
-               (get-foo) "foo"
-               (get-bar) "bar"
-               (do-something "foo" "bar") 2))
-
-```
 A `with` expression allows for using logic within the evaluation of an expression.
 It takes a vector of _clauses_, which may either be `let` or `where` clauses,
 and a single expression which will be evaluated in the end.
@@ -240,7 +199,7 @@ expression as parameter, evaluates it (using a `let-value` expression) and invok
 the fictional `println` action with the result as parameter.
 ```clojure
 (defexpr (println :str)
-  (let-value [:str-val :str]
+  (with [(let :str-val :str)]
              (>> println :str-val)))
 
 ```
@@ -320,9 +279,9 @@ the (imaginary) `strcat` action. It unquotes the parameters to be able to use th
 in an action.
 ```clojure
 (defun strcat [s1 s2]
-  (let-value [:s1 s1
-              :s2 s2]
-             (>> strcat :s1 :s2)))
+  (with [(let :s1 s1)
+         (let :s2 s2)]
+        (>> strcat :s1 :s2)))
 
 ```
 Then we define the function `greet` which takes a name of a person as parameter and prints a
@@ -403,10 +362,10 @@ A lambda can be used in place of a function (a first element in a list expressio
 (ex/test-expr labmda-call
               (let [f (let [baz "baz"]
                         (lambda [foo bar]
-                                (let-value [:foo foo
-                                            :bar bar
-                                            :baz baz]
-                                           (>> do-something :foo :bar :baz))))]
+                                (with [(let :foo foo)
+                                       (let :bar bar)
+                                       (let :baz baz)]
+                                      (>> do-something :foo :bar :baz))))]
                 (f "foo" "bar"))
               ()
               (t/sequential
@@ -418,10 +377,10 @@ The arguments to a lambda are evaluated using the bindings at the call site.
 (ex/test-expr labmda-call-computes-args
               (let [f (let [baz "baz"]
                         (lambda [foo bar]
-                                (let-value [:foo foo
-                                            :bar bar
-                                            :baz baz]
-                                           (>> do-something :foo :bar :baz))))
+                                (with [(let :foo foo)
+                                       (let :bar bar)
+                                       (let :baz baz)]
+                                      (>> do-something :foo :bar :baz))))
                     foo "FOO"
                     bar "BAR"]
                 (f foo bar))

@@ -1,7 +1,7 @@
 (ns expr.io
-  (require expr e [defun defexpr >> do let let-value quote])
+  (require expr e [defun defexpr >> do let with quote])
   (require native.io nio))
 
 (defun println [str]
-  (let-value [:str str]
-             (>> nio/println :str)))
+  (with [(let :str str)]
+        (>> nio/println :str)))

@@ -1,5 +1,5 @@
 (ns expr.arith
-  (require expr e [defun defexpr >> do let let-value quote if])
+  (require expr e [defun defexpr >> do let with quote if])
   (require native n))
 
 ;; Arithmetic
@@ -7,27 +7,27 @@
   0)
 
 (defun + [a b]
-  (let-value [:a a
-              :b b]
-             (>> n/+ :a :b)))
+  (with [(let :a a)
+         (let :b b)]
+        (>> n/+ :a :b)))
 
 (defun - [a b]
-  (let-value [:a a
-              :b b]
-             (>> n/- :a :b)))
+  (with [(let :a a)
+         (let :b b)]
+        (>> n/- :a :b)))
 
 (defun * []
   1)
 
 (defun * [a b]
-  (let-value [:a a
-              :b b]
-             (>> n/* :a :b)))
+  (with [(let :a a)
+         (let :b b)]
+        (>> n/* :a :b)))
 
 (defun / [a b]
-  (let-value [:a a
-              :b b]
-             (>> n// :a :b)))
+  (with [(let :a a)
+         (let :b b)]
+        (>> n// :a :b)))
 
 (left-associative +)
 (left-associative -)

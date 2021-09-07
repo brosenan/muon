@@ -6,7 +6,7 @@
 (ns expr.arith-test
   (require testing t)
   (require expr.arith ar [+ - * / and or not])
-  (require expr ex [defun >> quote let-value])
+  (require expr ex [defun >> quote with let])
   (use native n)
   (use proc p [step]))
 
@@ -93,8 +93,8 @@ different than two.
 For example, consider the binary operator `foo`, which is evaluated by a binary action of the same name.
 ```clojure
 (defun foo [a b]
-  (let-value [:a a
-              :b b]
+  (with [(let :a a)
+         (let :b b)]
              (>> foo :a :b)))
 
 (ex/test-expr left-associative-function-with-two-args-applies-it

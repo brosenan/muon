@@ -49,10 +49,10 @@
     (evolve-do :first-outcome :rest :bindings :outcome))
 
 (<- (evolve-do :first-outcome :rest :bindings :outcome)
- (case :first-outcome
-   (continue :first-action :first-next) (= :outcome
-                                           (continue :first-action (bind (do* :first-next :rest ...) :bindings)))
-   (return :retval) (step (bind (do :rest ...) :bindings) :retval :outcome)))
+    (case :first-outcome
+      (continue :first-action :first-next) (= :outcome
+                                              (continue :first-action (bind (do* :first-next :rest ...) :bindings)))
+      (return :retval) (step (bind (do :rest ...) :bindings) :retval :outcome)))
 
 ;; let
 (<- (step (bind (let [] :exprs ...) :bindings) :input :outcome)
@@ -69,21 +69,6 @@
       (return :value) (step (bind (let :let-bindings :body ...) [:var :value :bindngs ...]) () :outcome)
       (continue :action :next) (= :outcome (continue :action (bind (let* [:var :next :let-bindings ...] :body ...) :bindngs)))))
 
-;; let-value
-(<- (step (bind (let-value [] :exprs ...) :bindings) :input :outcome)
-    (step (bind (do :exprs ...) :bindings) :input :outcome))
-(<- (step (bind (let-value [:var :expr :let-bindings ...] :body ...) :bindngs) :input :outcome)
-    (step (bind :expr :bindngs) :input :expr-outcome)
-    (evolve-let-value :expr-outcome :var :let-bindings :body :bindngs :outcome))
-(<- (step (bind (let-value* [:var :expr :let-bindings ...] :body ...) :bindngs) :input :outcome)
-    (step :expr :input :expr-outcome)
-    (evolve-let-value :expr-outcome :var :let-bindings :body :bindngs :outcome))
-
-(<- (evolve-let-value :expr-outcome :var :let-bindings :body :bindngs :outcome)
-    (case :expr-outcome
-      (return :var) (step (bind (let-value :let-bindings :body ...) :bindngs) () :outcome)
-      (continue :action :next) (= :outcome (continue :action (bind (let-value* [:var :next :let-bindings ...] :body ...) :bindngs)))))
-
 ;; with
 (<- (step (bind (with [] :expr) :bindings) :input :outcome)
     (step (bind :expr :bindings) :input :outcome))
@@ -94,7 +79,7 @@
       (continue :action :next) (= :outcome (continue :action
                                                      (bind
                                                       (with [(let :var (do* :next)) :clauses ...]
-                                                            :expr) 
+                                                            :expr)
                                                       :bindings)))))
 (<- (step (bind (with [(where :goal) :clauses ...] :expr) :bindings) :input :outcome)
     :goal
@@ -109,14 +94,13 @@
 (defexpr (list)
   (quote ()))
 (defexpr (list :arg :args ...)
-  (let-value [:head :arg
-              :tail (list :args ...)]
-             (quote (:head :tail ...))))
+  (with [(let :head :arg)
+         (let :tail (list :args ...))]
+        (quote (:head :tail ...))))
 
 ;; bind-args
-(bind-args [] () [])
-(<- (bind-args [:param :params ...] (:arg :args ...) [:param :arg :bindings ...])
-    (bind-args :params :args :bindings))
+(<- (bind-args :params :args :bindings)
+    (bind-args :params :args [] :bindings))
 
 (bind-args [] () :end :end)
 (<- (bind-args [:param :params ...] (:arg :args ...) :end [:param :arg :bindings ...])
@@ -129,20 +113,21 @@
 
 ;; if
 (defexpr (if :cond :then :else)
-  (let-value [:bool :cond]
-    (select :bool :then :else)))
+  (with [(let :bool :cond)]
+        (select :bool :then :else)))
 
 (defexpr (select true :then :_else)
   :then)
 (defexpr (select false :_then :else)
   :else)
 
-(step (bind (lambda :params :expr) :bindings) :_input 
+;; lambda
+(step (bind (lambda :params :expr) :bindings) :_input
       (return (closure :params :expr :bindings)))
 
 (<- (step (bind (:f :args ...) :call-bindings) :input :outcome)
     (step (bind :f :call-bindings) :input (return (closure :params :expr :closure-bindings)))
-    (bind-args :params :arg-vals :closure-bindings :func-bindings)
-    (step (bind (let-value [:arg-vals (list :args ...)] 
-                           (do* (bind :expr :func-bindings)))
-                :call-bindings) :_input :outcome))
+    (step (bind
+           (with [(let :arg-vals (list :args ...))
+                  (where (bind-args :params :arg-vals :closure-bindings :func-bindings))]
+                 (do* (bind :expr :func-bindings))) :call-bindings) :_input :outcome))
